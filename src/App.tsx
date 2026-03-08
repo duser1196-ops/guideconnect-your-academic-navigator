@@ -22,6 +22,8 @@ import Profile from "./pages/dashboard/Profile";
 import AdminUsers from "./pages/dashboard/AdminUsers";
 import AddFaculty from "./pages/dashboard/AddFaculty";
 import AddCoordinator from "./pages/dashboard/AddCoordinator";
+import SectionStudents from "./pages/dashboard/SectionStudents";
+import FacultyAllocation from "./pages/dashboard/FacultyAllocation";
 
 const queryClient = new QueryClient();
 

@@ -30,8 +30,8 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
   ],
   coordinator: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Section Students", url: "/dashboard/faculty", icon: UsersRound },
-    { title: "Faculty Allocation", url: "/dashboard/projects", icon: ClipboardList },
+    { title: "Section Students", url: "/dashboard/section-students", icon: UsersRound },
+    { title: "Faculty Allocation", url: "/dashboard/faculty-allocation", icon: ClipboardList },
   ],
   admin: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
