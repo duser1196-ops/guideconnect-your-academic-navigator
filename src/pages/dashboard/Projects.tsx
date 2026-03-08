@@ -55,17 +55,14 @@ const Projects = () => {
 
   if (loading) return <DashboardSkeleton />;
 
-  const hasActiveProject = projects.some((p) => ["draft", "request_sent", "assigned"].includes(p.status));
+  const role = user?.role;
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="font-display text-2xl font-bold">My Projects</h1>
-        {!hasActiveProject && (
-          <Button className="gap-2" onClick={() => navigate("/dashboard/projects/create")}>
-            <Plus className="h-4 w-4" /> Create Project
-          </Button>
-        )}
+        <h1 className="font-display text-2xl font-bold">
+          {role === "faculty" ? "Assigned Projects" : "Projects"}
+        </h1>
       </div>
 
       {projects.length === 0 ? (
