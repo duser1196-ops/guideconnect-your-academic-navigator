@@ -22,6 +22,8 @@ import Profile from "./pages/dashboard/Profile";
 import AdminUsers from "./pages/dashboard/AdminUsers";
 import AddFaculty from "./pages/dashboard/AddFaculty";
 import AddCoordinator from "./pages/dashboard/AddCoordinator";
+import AdminProjects from "./pages/dashboard/AdminProjects";
+import AdminAssignments from "./pages/dashboard/AdminAssignments";
 import SectionStudents from "./pages/dashboard/SectionStudents";
 import FacultyAllocation from "./pages/dashboard/FacultyAllocation";
 
@@ -53,6 +55,8 @@ const App = () => (
               <Route path="admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="admin/add-faculty" element={<ProtectedRoute allowedRoles={["admin"]}><AddFaculty /></ProtectedRoute>} />
               <Route path="admin/add-coordinator" element={<ProtectedRoute allowedRoles={["admin"]}><AddCoordinator /></ProtectedRoute>} />
+              <Route path="admin/projects" element={<ProtectedRoute allowedRoles={["admin"]}><AdminProjects /></ProtectedRoute>} />
+              <Route path="admin/assignments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAssignments /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,58 +1,67 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, Shield, UserPlus, Activity, Settings, FolderKanban, GraduationCap } from "lucide-react";
+import { Users, Shield, UserPlus, Activity, Settings, FolderKanban, GraduationCap, FileText, ClipboardList } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
 import StatCard from "@/components/StatCard";
 import AnimatedCard from "@/components/AnimatedCard";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
-const recentActivity = [
-  { action: "Added new faculty: Dr. Kumar", time: "1h ago" },
-  { action: "Assigned coordinator to Section B", time: "3h ago" },
-  { action: "Removed inactive student account", time: "1d ago" },
-  { action: "System backup completed", time: "2d ago" },
-];
+const AdminDashboard = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ students: 0, faculty: 0, coordinators: 0, projects: 0, assignments: 0, pendingRequests: 0 });
+  const [loading, setLoading] = useState(true);
 
-const AdminDashboard = () => (
-  <div>
-    <DashboardHeader title="Admin Dashboard" description="System management and user administration." />
+  useEffect(() => {
+    if (!user) return;
+    const fetch = async () => {
+      const [students, faculty, coordinators, projects, assignments, pending] = await Promise.all([
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "student"),
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "faculty"),
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "coordinator"),
+        supabase.from("projects").select("id", { count: "exact", head: true }),
+        supabase.from("assignments").select("id", { count: "exact", head: true }),
+        supabase.from("guide_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      ]);
+      setStats({
+        students: students.count || 0,
+        faculty: faculty.count || 0,
+        coordinators: coordinators.count || 0,
+        projects: projects.count || 0,
+        assignments: assignments.count || 0,
+        pendingRequests: pending.count || 0,
+      });
+      setLoading(false);
+    };
+    fetch();
+  }, [user]);
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <StatCard icon={GraduationCap} title="Total Students" value={132} subtitle="Across all departments" delay={0} trend={{ value: "8%", positive: true }} />
-      <StatCard icon={UserPlus} title="Total Faculty" value={48} subtitle="3 pending approval" delay={0.1} />
-      <StatCard icon={Shield} title="Total Coordinators" value={6} subtitle="Across 3 departments" delay={0.2} />
-      <StatCard icon={FolderKanban} title="Total Projects" value={105} subtitle="All departments" delay={0.3} trend={{ value: "12%", positive: true }} />
-    </div>
+  if (loading) return <DashboardSkeleton />;
 
-    <div className="grid lg:grid-cols-2 gap-6">
-      <AnimatedCard>
-        <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" /> Recent Activity
-        </h3>
-        <div className="space-y-3">
-          {recentActivity.map((a, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.1 }}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <p className="text-sm">{a.action}</p>
-              <span className="text-xs text-muted-foreground">{a.time}</span>
-            </motion.div>
-          ))}
-        </div>
-      </AnimatedCard>
+  return (
+    <div>
+      <DashboardHeader title="Admin Dashboard" description="System management and user administration." />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <StatCard icon={GraduationCap} title="Total Students" value={stats.students} subtitle="Registered students" delay={0} />
+        <StatCard icon={UserPlus} title="Total Faculty" value={stats.faculty} subtitle="Active faculty" delay={0.1} />
+        <StatCard icon={Shield} title="Total Coordinators" value={stats.coordinators} subtitle="Section coordinators" delay={0.2} />
+        <StatCard icon={FolderKanban} title="Total Projects" value={stats.projects} subtitle="All projects" delay={0.3} />
+        <StatCard icon={ClipboardList} title="Assignments" value={stats.assignments} subtitle="Faculty-student pairs" delay={0.4} />
+        <StatCard icon={FileText} title="Pending Requests" value={stats.pendingRequests} subtitle="Awaiting faculty action" delay={0.5} />
+      </div>
 
       <AnimatedCard delay={0.1}>
         <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
           <Settings className="h-5 w-5 text-primary" /> Quick Actions
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Add Faculty", icon: UserPlus, href: "/dashboard/admin/add-faculty" },
             { label: "Add Coordinator", icon: Shield, href: "/dashboard/admin/add-coordinator" },
             { label: "Manage Users", icon: Users, href: "/dashboard/admin/users" },
-            { label: "System Settings", icon: Settings, href: "#" },
+            { label: "View Projects", icon: FolderKanban, href: "/dashboard/admin/projects" },
           ].map((item, i) => (
             <motion.a
               key={item.label}
@@ -71,7 +80,7 @@ const AdminDashboard = () => (
         </div>
       </AnimatedCard>
     </div>
-  </div>
-);
+  );
+};
 
 export default AdminDashboard;

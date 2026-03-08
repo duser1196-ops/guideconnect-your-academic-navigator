@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -28,7 +28,6 @@ serve(async (req) => {
       });
     }
 
-    // Check if calling user is admin
     const { data: callerProfile } = await supabaseAdmin
       .from("users")
       .select("role")
@@ -43,6 +42,28 @@ serve(async (req) => {
     }
 
     const body = await req.json();
+
+    // Handle deactivate action
+    if (body.action === "deactivate" && body.target_auth_id) {
+      const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
+        body.target_auth_id,
+        { ban_duration: "876600h" } // ~100 years
+      );
+
+      if (banError) {
+        return new Response(JSON.stringify({ error: banError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle create user action
     const { email, password, name, role, department, section, faculty_id, expertise, max_students } = body;
 
     if (!email || !password || !name || !role) {
@@ -74,7 +95,7 @@ serve(async (req) => {
     }
 
     // Insert into users table
-    const { error: insertError } = await supabaseAdmin.from("users").insert({
+    const { data: newUser, error: insertError } = await supabaseAdmin.from("users").insert({
       auth_id: newAuthUser.user.id,
       email,
       name,
@@ -84,15 +105,27 @@ serve(async (req) => {
       faculty_id: faculty_id || null,
       expertise: expertise || null,
       max_students: max_students || 5,
-    });
+    }).select("id").single();
 
     if (insertError) {
-      // Rollback: delete auth user
       await supabaseAdmin.auth.admin.deleteUser(newAuthUser.user.id);
       return new Response(JSON.stringify({ error: insertError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // If coordinator, insert into coordinator_sections
+    if (role === "coordinator" && department && section && newUser) {
+      const { error: sectionError } = await supabaseAdmin.from("coordinator_sections").insert({
+        coordinator_id: newUser.id,
+        department,
+        section,
+      });
+
+      if (sectionError) {
+        console.error("Failed to insert coordinator section:", sectionError.message);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, user_id: newAuthUser.user.id }), {
