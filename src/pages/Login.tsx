@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth, roleRedirects } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -21,6 +22,7 @@ const Login = () => {
       const success = login(email, password);
       if (success) {
         const stored = JSON.parse(localStorage.getItem("guideconnect_user") || "{}");
+        toast({ title: "Login Successful ✓", description: `Welcome back, ${stored.name}!` });
         navigate(roleRedirects[stored.role as keyof typeof roleRedirects] || "/dashboard");
       }
       setSubmitting(false);
