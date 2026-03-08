@@ -46,12 +46,14 @@ const ProjectDetail = () => {
   const { user } = useAuth();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assignedFaculty, setAssignedFaculty] = useState<string | null>(null);
+
+  // Students can only view, no editing
+  const isStudent = user?.role === "student";
+  const isEditable = !isStudent && project && (project.status === "draft" || project.status === "request_sent");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", domain: "", technologies: "" });
-  const [assignedFaculty, setAssignedFaculty] = useState<string | null>(null);
-
-  const isEditable = project && (project.status === "draft" || project.status === "request_sent");
 
   useEffect(() => {
     if (!id) return;
