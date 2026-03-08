@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, FileText, Tag, Layers, AlignLeft, Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import AnimatedCard from "@/components/AnimatedCard";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
 const steps = [
   { label: "Basic Info", icon: FileText },
@@ -29,6 +30,31 @@ const CreateProject = () => {
   const [form, setForm] = useState({ title: "", description: "", domain: "", type: "", technologies: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // Check if student already has a project
+  useEffect(() => {
+    if (!user) return;
+    const checkExisting = async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("id, status")
+        .eq("student_id", user.id)
+        .in("status", ["draft", "request_sent", "assigned"])
+        .limit(1);
+
+      if (data && data.length > 0) {
+        toast({
+          title: "Project Already Exists",
+          description: "You already have an active project. Redirecting to edit it.",
+        });
+        navigate(`/dashboard/projects/${data[0].id}`);
+        return;
+      }
+      setChecking(false);
+    };
+    checkExisting();
+  }, [user, navigate]);
 
   const update = (field: string, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
@@ -75,6 +101,8 @@ const CreateProject = () => {
     }
     setSubmitting(false);
   };
+
+  if (checking) return <DashboardSkeleton />;
 
   const slideVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
