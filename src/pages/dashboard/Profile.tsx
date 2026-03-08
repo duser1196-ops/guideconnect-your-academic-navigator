@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import AnimatedCard from "@/components/AnimatedCard";
-import { Mail, Phone, MapPin, GraduationCap, Edit3, Save, Hash, BookOpen, Layers, Building } from "lucide-react";
+import { Mail, Phone, MapPin, GraduationCap, Edit3, Save, Hash, BookOpen, Layers, Building, Star, Users, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,18 +22,33 @@ const Profile = () => {
   const role = user?.role || "student";
   const p = profilesByRole[role];
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: p.phone,
-    location: p.location,
+
+  // Student fields
+  const [studentForm, setStudentForm] = useState({
     department: "CSE",
     rollNumber: "CS2021001",
     year: "3",
     section: "A",
   });
 
-  const update = (f: string, v: string) => setForm((prev) => ({ ...prev, [f]: v }));
+  // Faculty fields
+  const [facultyForm, setFacultyForm] = useState({
+    staffId: "FAC-2019-042",
+    department: "CSE",
+    interests: "Machine Learning, NLP, Deep Learning",
+    maxStudents: "8",
+  });
+
+  const [contactForm, setContactForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: p.phone,
+    location: p.location,
+  });
+
+  const updateContact = (f: string, v: string) => setContactForm((prev) => ({ ...prev, [f]: v }));
+  const updateStudent = (f: string, v: string) => setStudentForm((prev) => ({ ...prev, [f]: v }));
+  const updateFaculty = (f: string, v: string) => setFacultyForm((prev) => ({ ...prev, [f]: v }));
 
   const handleSave = () => {
     setEditing(false);
@@ -63,33 +78,27 @@ const Profile = () => {
             </motion.div>
             <div className="flex-1">
               {editing ? (
-                <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="font-display text-xl font-bold mb-1" />
+                <Input value={contactForm.name} onChange={(e) => updateContact("name", e.target.value)} className="font-display text-xl font-bold mb-1" />
               ) : (
-                <h2 className="font-display text-xl font-bold">{form.name}</h2>
+                <h2 className="font-display text-xl font-bold">{contactForm.name}</h2>
               )}
               <p className="text-sm text-muted-foreground">{p.detail}</p>
               <Badge variant="outline" className="mt-1 text-xs capitalize">{role}</Badge>
             </div>
           </div>
 
-          {/* Contact info */}
           <div className="space-y-4">
             {[
-              { icon: Mail, label: "Email", field: "email", value: form.email, type: "email" },
-              { icon: Phone, label: "Phone", field: "phone", value: form.phone, type: "tel" },
-              { icon: MapPin, label: "Location", field: "location", value: form.location, type: "text" },
+              { icon: Mail, label: "Email", field: "email", value: contactForm.email, type: "email" },
+              { icon: Phone, label: "Phone", field: "phone", value: contactForm.phone, type: "tel" },
+              { icon: MapPin, label: "Location", field: "location", value: contactForm.location, type: "text" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
                 <item.icon className="h-4 w-4 text-primary shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">{item.label}</p>
                   {editing ? (
-                    <Input
-                      type={item.type}
-                      value={item.value}
-                      onChange={(e) => update(item.field, e.target.value)}
-                      className="mt-1 h-8 text-sm"
-                    />
+                    <Input type={item.type} value={item.value} onChange={(e) => updateContact(item.field, e.target.value)} className="mt-1 h-8 text-sm" />
                   ) : (
                     <p className="text-sm font-medium">{item.value}</p>
                   )}
@@ -107,11 +116,9 @@ const Profile = () => {
             </h3>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Building className="h-3 w-3" /> Department
-                </Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Building className="h-3 w-3" /> Department</Label>
                 {editing ? (
-                  <Select value={form.department} onValueChange={(v) => update("department", v)}>
+                  <Select value={studentForm.department} onValueChange={(v) => updateStudent("department", v)}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CSE">CSE</SelectItem>
@@ -122,27 +129,21 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{form.department}</p>
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{studentForm.department}</p>
                 )}
               </div>
-
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Hash className="h-3 w-3" /> Roll Number
-                </Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" /> Roll Number</Label>
                 {editing ? (
-                  <Input value={form.rollNumber} onChange={(e) => update("rollNumber", e.target.value)} className="h-9" />
+                  <Input value={studentForm.rollNumber} onChange={(e) => updateStudent("rollNumber", e.target.value)} className="h-9" />
                 ) : (
-                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{form.rollNumber}</p>
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{studentForm.rollNumber}</p>
                 )}
               </div>
-
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Layers className="h-3 w-3" /> Year
-                </Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Layers className="h-3 w-3" /> Year</Label>
                 {editing ? (
-                  <Select value={form.year} onValueChange={(v) => update("year", v)}>
+                  <Select value={studentForm.year} onValueChange={(v) => updateStudent("year", v)}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1st Year</SelectItem>
@@ -152,16 +153,13 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{form.year}{form.year === "1" ? "st" : form.year === "2" ? "nd" : form.year === "3" ? "rd" : "th"} Year</p>
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{studentForm.year}{studentForm.year === "1" ? "st" : studentForm.year === "2" ? "nd" : studentForm.year === "3" ? "rd" : "th"} Year</p>
                 )}
               </div>
-
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <GraduationCap className="h-3 w-3" /> Section
-                </Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><GraduationCap className="h-3 w-3" /> Section</Label>
                 {editing ? (
-                  <Select value={form.section} onValueChange={(v) => update("section", v)}>
+                  <Select value={studentForm.section} onValueChange={(v) => updateStudent("section", v)}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="A">Section A</SelectItem>
@@ -170,7 +168,63 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">Section {form.section}</p>
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">Section {studentForm.section}</p>
+                )}
+              </div>
+            </div>
+          </AnimatedCard>
+        )}
+
+        {/* Faculty-specific fields */}
+        {(role === "faculty" || role === "coordinator") && (
+          <AnimatedCard delay={0.1}>
+            <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" /> Faculty Information
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Hash className="h-3 w-3" /> Staff ID</Label>
+                {editing ? (
+                  <Input value={facultyForm.staffId} onChange={(e) => updateFaculty("staffId", e.target.value)} className="h-9" />
+                ) : (
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{facultyForm.staffId}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Building className="h-3 w-3" /> Department</Label>
+                {editing ? (
+                  <Select value={facultyForm.department} onValueChange={(v) => updateFaculty("department", v)}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CSE">CSE</SelectItem>
+                      <SelectItem value="ECE">ECE</SelectItem>
+                      <SelectItem value="ME">Mechanical</SelectItem>
+                      <SelectItem value="CE">Civil</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{facultyForm.department}</p>
+                )}
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" /> Areas of Interest</Label>
+                {editing ? (
+                  <Input value={facultyForm.interests} onChange={(e) => updateFaculty("interests", e.target.value)} className="h-9" placeholder="Comma-separated interests" />
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 p-2">
+                    {facultyForm.interests.split(",").map((i) => (
+                      <Badge key={i.trim()} variant="secondary" className="text-xs">{i.trim()}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Maximum Students</Label>
+                {editing ? (
+                  <Input type="number" value={facultyForm.maxStudents} onChange={(e) => updateFaculty("maxStudents", e.target.value)} className="h-9" min="1" max="20" />
+                ) : (
+                  <p className="text-sm font-medium p-2 rounded-md bg-muted/40">{facultyForm.maxStudents} students</p>
                 )}
               </div>
             </div>
