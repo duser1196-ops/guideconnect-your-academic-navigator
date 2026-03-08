@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, FileText, Clock, CheckCircle, XCircle, Inbox, FolderKanban } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -35,7 +35,7 @@ const FacultyDashboard = () => {
   const [maxStudents, setMaxStudents] = useState(5);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
 
     const [reqRes, assignRes, profileRes] = await Promise.all([
@@ -59,9 +59,27 @@ const FacultyDashboard = () => {
     setAssignments((assignRes.data as any) || []);
     if (profileRes.data) setMaxStudents(profileRes.data.max_students || 5);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('faculty-dashboard')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guide_requests' }, () => {
+        toast({ title: "📩 New Request", description: "A student has sent you a guide request." });
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'guide_requests' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchData]);
 
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const assignedCount = assignments.length;

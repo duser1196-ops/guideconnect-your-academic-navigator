@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock, Send, CheckCircle, FolderKanban, Users, Sparkles, Star } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
+import { toast } from "@/hooks/use-toast";
 
 const quickActions = [
   { label: "View Faculty", icon: Users, path: "/dashboard/faculty", color: "from-primary to-primary/70" },
@@ -35,87 +36,108 @@ const StudentDashboard = () => {
   const [assignedFaculty, setAssignedFaculty] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<FacultyRec[]>([]);
 
+  const fetchStats = useCallback(async () => {
+    if (!user) return;
+    const [projectsRes, requestsRes, assignmentRes] = await Promise.all([
+      supabase.from("projects").select("id, domain, technologies, status").eq("student_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("guide_requests").select("id, status").eq("student_id", user.id),
+      supabase.from("assignments").select("faculty_id, users!assignments_faculty_id_fkey(name)").eq("student_id", user.id).maybeSingle(),
+    ]);
+
+    const requests = requestsRes.data || [];
+    const projects = projectsRes.data || [];
+    setStats({
+      projects: projects.length,
+      requestsSent: requests.length,
+      accepted: requests.filter((r) => r.status === "accepted").length,
+      pending: requests.filter((r) => r.status === "pending").length,
+    });
+
+    if (assignmentRes.data) {
+      const faculty = assignmentRes.data.users as any;
+      setAssignedFaculty(faculty?.name || null);
+    }
+
+    // Calculate recommendations if student has a project and no assignment
+    const activeProject = projects.find((p) => ["draft", "request_sent"].includes(p.status));
+    if (activeProject && !assignmentRes.data) {
+      const { data: facultyData } = await supabase
+        .from("users")
+        .select("id, name, department, expertise, max_students")
+        .eq("role", "faculty");
+
+      const projectDomain = (activeProject.domain || "").toLowerCase();
+      const projectTech = ((activeProject.technologies as string[]) || []).map((t) => t.toLowerCase());
+
+      const scored: FacultyRec[] = await Promise.all(
+        (facultyData || []).map(async (f) => {
+          const expertise = ((f.expertise as string[]) || []);
+          const expertiseLower = expertise.map((e) => e.toLowerCase());
+
+          let score = 0;
+          if (projectDomain && expertiseLower.some((e) => e.includes(projectDomain) || projectDomain.includes(e))) {
+            score += 2;
+          }
+          for (const tech of projectTech) {
+            if (expertiseLower.some((e) => e.includes(tech) || tech.includes(e))) {
+              score += 1;
+            }
+          }
+
+          const { count } = await supabase
+            .from("assignments")
+            .select("id", { count: "exact", head: true })
+            .eq("faculty_id", f.id);
+
+          return {
+            id: f.id,
+            name: f.name,
+            department: f.department,
+            expertise,
+            max_students: f.max_students || 5,
+            assignedCount: count || 0,
+            score,
+          };
+        })
+      );
+
+      const top = scored
+        .filter((f) => f.assignedCount < f.max_students)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      setRecommendations(top);
+    }
+
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Realtime subscriptions
   useEffect(() => {
     if (!user) return;
-    const fetchStats = async () => {
-      const [projectsRes, requestsRes, assignmentRes] = await Promise.all([
-        supabase.from("projects").select("id, domain, technologies, status").eq("student_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("guide_requests").select("id, status").eq("student_id", user.id),
-        supabase.from("assignments").select("faculty_id, users!assignments_faculty_id_fkey(name)").eq("student_id", user.id).maybeSingle(),
-      ]);
 
-      const requests = requestsRes.data || [];
-      const projects = projectsRes.data || [];
-      setStats({
-        projects: projects.length,
-        requestsSent: requests.length,
-        accepted: requests.filter((r) => r.status === "accepted").length,
-        pending: requests.filter((r) => r.status === "pending").length,
-      });
+    const channel = supabase
+      .channel('student-dashboard')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'guide_requests' }, (payload) => {
+        const newStatus = (payload.new as any).status;
+        if (newStatus === 'accepted') {
+          toast({ title: "🎉 Request Accepted", description: "Faculty accepted your request!" });
+        } else if (newStatus === 'rejected') {
+          toast({ title: "Request Update", description: "A faculty member declined your request." });
+        } else if (newStatus === 'cancelled') {
+          toast({ title: "Request Cancelled", description: "A pending request was cancelled." });
+        }
+        fetchStats();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignments' }, () => {
+        fetchStats();
+      })
+      .subscribe();
 
-      if (assignmentRes.data) {
-        const faculty = assignmentRes.data.users as any;
-        setAssignedFaculty(faculty?.name || null);
-      }
-
-      // Calculate recommendations if student has a project and no assignment
-      const activeProject = projects.find((p) => ["draft", "request_sent"].includes(p.status));
-      if (activeProject && !assignmentRes.data) {
-        const { data: facultyData } = await supabase
-          .from("users")
-          .select("id, name, department, expertise, max_students")
-          .eq("role", "faculty");
-
-        const projectDomain = (activeProject.domain || "").toLowerCase();
-        const projectTech = ((activeProject.technologies as string[]) || []).map((t) => t.toLowerCase());
-
-        const scored: FacultyRec[] = await Promise.all(
-          (facultyData || []).map(async (f) => {
-            const expertise = ((f.expertise as string[]) || []);
-            const expertiseLower = expertise.map((e) => e.toLowerCase());
-
-            let score = 0;
-            // Domain match
-            if (projectDomain && expertiseLower.some((e) => e.includes(projectDomain) || projectDomain.includes(e))) {
-              score += 2;
-            }
-            // Technology matches
-            for (const tech of projectTech) {
-              if (expertiseLower.some((e) => e.includes(tech) || tech.includes(e))) {
-                score += 1;
-              }
-            }
-
-            const { count } = await supabase
-              .from("assignments")
-              .select("id", { count: "exact", head: true })
-              .eq("faculty_id", f.id);
-
-            return {
-              id: f.id,
-              name: f.name,
-              department: f.department,
-              expertise,
-              max_students: f.max_students || 5,
-              assignedCount: count || 0,
-              score,
-            };
-          })
-        );
-
-        // Sort by score desc, filter those with capacity, take top 5
-        const top = scored
-          .filter((f) => f.assignedCount < f.max_students)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5);
-
-        setRecommendations(top);
-      }
-
-      setLoading(false);
-    };
-    fetchStats();
-  }, [user]);
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchStats]);
 
   if (loading) return <DashboardSkeleton />;
 
