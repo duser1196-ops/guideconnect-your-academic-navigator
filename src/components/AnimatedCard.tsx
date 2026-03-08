@@ -9,12 +9,12 @@ interface AnimatedCardProps {
 
 const AnimatedCard = ({ children, className = "", delay = 0 }: AnimatedCardProps) => (
   <motion.div
-    initial={{ opacity: 0, y: 24 }}
+    initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, margin: "-60px" }}
-    transition={{ duration: 0.5, delay, ease: "easeOut" }}
-    whileHover={{ y: -4, boxShadow: "0 20px 60px hsla(239,84%,67%,0.12)" }}
-    className={`glass rounded-xl p-6 transition-colors ${className}`}
+    viewport={{ once: true, margin: "-40px" }}
+    transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+    whileHover={{ y: -3, transition: { duration: 0.25 } }}
+    className={`glass-interactive rounded-xl p-6 ${className}`}
   >
     {children}
   </motion.div>
