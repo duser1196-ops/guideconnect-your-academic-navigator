@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, FileText, Tag, Layers, AlignLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Tag, Layers, AlignLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import AnimatedCard from "@/components/AnimatedCard";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const steps = [
   { label: "Basic Info", icon: FileText },
@@ -22,9 +24,11 @@ const domains = ["Machine Learning", "Web Development", "Data Science", "Cyberse
 
 const CreateProject = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ title: "", description: "", domain: "", type: "" });
+  const [form, setForm] = useState({ title: "", description: "", domain: "", type: "", technologies: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const update = (field: string, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
@@ -43,18 +47,33 @@ const CreateProject = () => {
     return Object.keys(e).length === 0;
   };
 
-  const next = () => {
-    if (!validate()) return;
-    if (step < steps.length - 1) setStep(step + 1);
-  };
+  const next = () => { if (validate()) setStep(step + 1); };
+  const prev = () => { if (step > 0) setStep(step - 1); };
 
-  const prev = () => {
-    if (step > 0) setStep(step - 1);
-  };
+  const handleSubmit = async () => {
+    if (!user) return;
+    setSubmitting(true);
 
-  const handleSubmit = () => {
-    toast({ title: "Project Created! 🎉", description: `"${form.title}" has been created successfully.` });
-    navigate("/dashboard/projects");
+    const technologies = form.technologies
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const { error } = await supabase.from("projects").insert({
+      student_id: user.id,
+      title: form.title,
+      description: form.description,
+      domain: form.domain,
+      technologies: technologies.length > 0 ? technologies : null,
+    });
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Project Created! 🎉", description: `"${form.title}" has been created successfully.` });
+      navigate("/dashboard/projects");
+    }
+    setSubmitting(false);
   };
 
   const slideVariants = {
@@ -86,23 +105,14 @@ const CreateProject = () => {
             >
               <s.icon className={`h-4 w-4 ${i <= step ? "text-primary-foreground" : "text-muted-foreground"}`} />
               {i < step && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 bg-green-500 rounded-full h-4 w-4 flex items-center justify-center"
-                >
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-1 -right-1 bg-green-500 rounded-full h-4 w-4 flex items-center justify-center">
                   <Check className="h-2.5 w-2.5 text-white" />
                 </motion.div>
               )}
             </motion.div>
             {i < steps.length - 1 && (
               <div className="flex-1 h-0.5 mx-2 rounded-full bg-muted overflow-hidden">
-                <motion.div
-                  className="h-full bg-primary"
-                  initial={{ width: "0%" }}
-                  animate={{ width: i < step ? "100%" : "0%" }}
-                  transition={{ duration: 0.4 }}
-                />
+                <motion.div className="h-full bg-primary" initial={{ width: "0%" }} animate={{ width: i < step ? "100%" : "0%" }} transition={{ duration: 0.4 }} />
               </div>
             )}
           </div>
@@ -112,36 +122,17 @@ const CreateProject = () => {
         Step {step + 1} of {steps.length} — <span className="font-medium text-foreground">{steps[step].label}</span>
       </p>
 
-      {/* Form steps */}
       <AnimatedCard>
         <AnimatePresence mode="wait" custom={1}>
-          <motion.div
-            key={step}
-            custom={1}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: "easeOut" }}
-          >
+          <motion.div key={step} custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeOut" }}>
             {step === 0 && (
               <div className="space-y-4">
                 <h3 className="font-display font-semibold text-lg">Project Title</h3>
                 <p className="text-sm text-muted-foreground">Choose a clear, descriptive title for your project.</p>
                 <div className="space-y-2">
                   <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g. ML-based Healthcare Diagnostics"
-                    value={form.title}
-                    onChange={(e) => update("title", e.target.value)}
-                    className={errors.title ? "border-destructive" : ""}
-                  />
-                  {errors.title && (
-                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">
-                      {errors.title}
-                    </motion.p>
-                  )}
+                  <Input id="title" placeholder="e.g. ML-based Healthcare Diagnostics" value={form.title} onChange={(e) => update("title", e.target.value)} className={errors.title ? "border-destructive" : ""} />
+                  {errors.title && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.title}</motion.p>}
                 </div>
               </div>
             )}
@@ -152,20 +143,14 @@ const CreateProject = () => {
                 <p className="text-sm text-muted-foreground">Describe the objectives, methodology, and expected outcomes.</p>
                 <div className="space-y-2">
                   <Label htmlFor="desc">Description *</Label>
-                  <Textarea
-                    id="desc"
-                    rows={5}
-                    placeholder="Describe your project in detail…"
-                    value={form.description}
-                    onChange={(e) => update("description", e.target.value)}
-                    className={errors.description ? "border-destructive" : ""}
-                  />
-                  {errors.description && (
-                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">
-                      {errors.description}
-                    </motion.p>
-                  )}
+                  <Textarea id="desc" rows={5} placeholder="Describe your project in detail…" value={form.description} onChange={(e) => update("description", e.target.value)} className={errors.description ? "border-destructive" : ""} />
+                  {errors.description && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.description}</motion.p>}
                   <p className="text-xs text-muted-foreground text-right">{form.description.length} characters</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tech">Technologies (optional)</Label>
+                  <Input id="tech" placeholder="e.g. Python, TensorFlow, React" value={form.technologies} onChange={(e) => update("technologies", e.target.value)} />
+                  <p className="text-xs text-muted-foreground">Separate with commas</p>
                 </div>
               </div>
             )}
@@ -177,38 +162,22 @@ const CreateProject = () => {
                 <div className="space-y-2">
                   <Label>Domain *</Label>
                   <Select value={form.domain} onValueChange={(v) => update("domain", v)}>
-                    <SelectTrigger className={errors.domain ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select domain" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {domains.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger className={errors.domain ? "border-destructive" : ""}><SelectValue placeholder="Select domain" /></SelectTrigger>
+                    <SelectContent>{domains.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                   </Select>
-                  {errors.domain && (
-                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">
-                      {errors.domain}
-                    </motion.p>
-                  )}
+                  {errors.domain && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.domain}</motion.p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Project Type *</Label>
                   <Select value={form.type} onValueChange={(v) => update("type", v)}>
-                    <SelectTrigger className={errors.type ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
+                    <SelectTrigger className={errors.type ? "border-destructive" : ""}><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="TBP">TBP (Term-Based Project)</SelectItem>
                       <SelectItem value="Mini">Mini Project</SelectItem>
                       <SelectItem value="Major">Major Project</SelectItem>
                     </SelectContent>
                   </Select>
-                  {errors.type && (
-                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">
-                      {errors.type}
-                    </motion.p>
-                  )}
+                  {errors.type && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.type}</motion.p>}
                 </div>
               </div>
             )}
@@ -223,6 +192,7 @@ const CreateProject = () => {
                     { label: "Description", value: form.description },
                     { label: "Domain", value: form.domain },
                     { label: "Type", value: form.type },
+                    { label: "Technologies", value: form.technologies || "None specified" },
                   ].map((item) => (
                     <div key={item.label}>
                       <p className="text-xs text-muted-foreground font-medium mb-0.5">{item.label}</p>
@@ -239,18 +209,16 @@ const CreateProject = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation */}
         <div className="flex justify-between mt-8 pt-4 border-t border-border">
           <Button variant="outline" onClick={prev} disabled={step === 0} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
           {step < steps.length - 1 ? (
-            <Button onClick={next} className="gap-2">
-              Next <ArrowRight className="h-4 w-4" />
-            </Button>
+            <Button onClick={next} className="gap-2">Next <ArrowRight className="h-4 w-4" /></Button>
           ) : (
-            <Button onClick={handleSubmit} className="gap-2">
-              <Check className="h-4 w-4" /> Create Project
+            <Button onClick={handleSubmit} className="gap-2" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {submitting ? "Creating…" : "Create Project"}
             </Button>
           )}
         </div>

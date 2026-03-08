@@ -1,31 +1,22 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
-  id: number;
-  type: "request_sent" | "request_accepted" | "request_rejected" | "info";
+  id: string;
+  type: string;
+  title: string;
   message: string;
-  time: string;
-  read: boolean;
+  created_at: string;
+  is_read: boolean;
 }
-
-const initialNotifications: Notification[] = [
-  { id: 1, type: "request_accepted", message: "Faculty accepted your project request — Dr. Ramesh Kumar for ML in Healthcare.", time: "30m ago", read: false },
-  { id: 2, type: "request_sent", message: "Your request was sent to Dr. Meena Sharma for NLP Chatbot.", time: "2h ago", read: false },
-  { id: 3, type: "request_rejected", message: "Faculty rejected your project request — Dr. Anil Verma declined IoT Smart Campus (no available slots).", time: "5h ago", read: false },
-  { id: 4, type: "info", message: "Coordinator updated project status for AR Learning Platform.", time: "8h ago", read: false },
-  { id: 5, type: "request_accepted", message: "Dr. Priya Singh accepted your collaboration request for Blockchain Auth.", time: "1d ago", read: true },
-  { id: 6, type: "info", message: "Admin announcement: System maintenance scheduled for March 15.", time: "1d ago", read: true },
-  { id: 7, type: "request_sent", message: "Your request was sent to Dr. Kavita Joshi for AR Learning.", time: "2d ago", read: true },
-  { id: 8, type: "request_rejected", message: "Dr. Sanjay Patel declined your co-author request.", time: "3d ago", read: true },
-  { id: 9, type: "info", message: "Your project proposal for Data Viz Dashboard was approved.", time: "4d ago", read: true },
-  { id: 10, type: "info", message: "Admin announcement: New faculty members added to the platform.", time: "5d ago", read: true },
-];
 
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  markAsRead: (id: number) => void;
+  markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  loading: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -33,22 +24,58 @@ const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   markAsRead: () => {},
   markAllAsRead: () => {},
+  loading: true,
 });
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const markAsRead = (id: number) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    const fetchNotifications = async () => {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      setNotifications(data || []);
+      setLoading(false);
+    };
+
+    fetchNotifications();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel("notifications-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
+        setNotifications((prev) => [payload.new as Notification, ...prev]);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  const markAsRead = async (id: string) => {
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    if (!user) return;
+    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, loading }}>
       {children}
     </NotificationContext.Provider>
   );
