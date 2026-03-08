@@ -22,6 +22,7 @@ const Login = () => {
       const success = login(email, password);
       if (success) {
         const stored = JSON.parse(localStorage.getItem("guideconnect_user") || "{}");
+        toast({ title: "Login Successful ✓", description: `Welcome back, ${stored.name}!` });
         navigate(roleRedirects[stored.role as keyof typeof roleRedirects] || "/dashboard");
       }
       setSubmitting(false);
