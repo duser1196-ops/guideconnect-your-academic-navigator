@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import AnimatedCard from "@/components/AnimatedCard";
-import { FolderKanban, Plus, Calendar, Eye } from "lucide-react";
+import { FolderKanban, Calendar, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +16,7 @@ interface Project {
   status: string;
   technologies: string[] | null;
   created_at: string;
+  studentName?: string;
 }
 
 const statusVariant: Record<string, "default" | "secondary" | "outline"> = {
@@ -41,27 +41,65 @@ const Projects = () => {
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("student_id", user.id)
-        .order("created_at", { ascending: false });
-      setProjects(data || []);
+    const fetchProjects = async () => {
+      if (user.role === "student") {
+        const { data } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("student_id", user.id)
+          .order("created_at", { ascending: false });
+        setProjects(data || []);
+      } else if (user.role === "faculty") {
+        // Faculty sees projects assigned to them via assignments table
+        const { data: assignments } = await supabase
+          .from("assignments")
+          .select("project_id")
+          .eq("faculty_id", user.id);
+
+        if (assignments && assignments.length > 0) {
+          const projectIds = assignments.map((a) => a.project_id);
+          const { data } = await supabase
+            .from("projects")
+            .select("*, student:users!projects_student_id_fkey(name)")
+            .in("id", projectIds)
+            .order("created_at", { ascending: false });
+          setProjects(
+            (data || []).map((p: any) => ({
+              ...p,
+              studentName: p.student?.name || "Unknown",
+            }))
+          );
+        } else {
+          setProjects([]);
+        }
+      } else {
+        // Coordinator/Admin see all projects
+        const { data } = await supabase
+          .from("projects")
+          .select("*, student:users!projects_student_id_fkey(name)")
+          .order("created_at", { ascending: false });
+        setProjects(
+          (data || []).map((p: any) => ({
+            ...p,
+            studentName: p.student?.name || "Unknown",
+          }))
+        );
+      }
       setLoading(false);
     };
-    fetch();
+    fetchProjects();
   }, [user]);
 
   if (loading) return <DashboardSkeleton />;
 
   const role = user?.role;
+  const isStudent = role === "student";
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-2xl font-bold">
-          {role === "faculty" ? "Assigned Projects" : "Projects"}
+          {role === "faculty" ? "My Guided Projects" : role === "student" ? "My Project" : "All Projects"}
         </h1>
       </div>
 
@@ -69,8 +107,13 @@ const Projects = () => {
         <AnimatedCard>
           <div className="text-center py-10">
             <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground mb-4">You haven't created any projects yet.</p>
-            <Button onClick={() => navigate("/dashboard/projects/create")}>Create Your First Project</Button>
+            <p className="text-muted-foreground">
+              {isStudent
+                ? "Project has not yet been assigned by the coordinator."
+                : role === "faculty"
+                ? "No projects have been assigned to you yet."
+                : "No projects found."}
+            </p>
           </div>
         </AnimatedCard>
       ) : (
@@ -86,6 +129,9 @@ const Projects = () => {
                 </div>
                 <Badge variant={statusVariant[p.status] || "outline"}>{statusLabel[p.status] || p.status}</Badge>
               </div>
+              {!isStudent && p.studentName && (
+                <p className="text-xs text-muted-foreground mb-2">Student: {p.studentName}</p>
+              )}
               <div className="text-xs text-muted-foreground space-y-1.5 mb-3">
                 {p.domain && <p>Domain: {p.domain}</p>}
                 <p className="flex items-center gap-1.5">
