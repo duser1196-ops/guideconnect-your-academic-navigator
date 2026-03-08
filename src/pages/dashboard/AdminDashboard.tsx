@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Users, Shield, UserPlus, Settings, FolderKanban, GraduationCap,
-  FileText, ClipboardList, AlertCircle, BarChart3, PieChart, TrendingUp,
+  FileText, ClipboardList, AlertCircle, BarChart3, PieChart, TrendingUp, CheckCircle,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
