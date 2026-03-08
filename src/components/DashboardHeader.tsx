@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useRole } from "@/hooks/useRole";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import NotificationBell from "@/components/NotificationBell";
 
 const roleGreetings = {
   student: { name: "Alex Johnson", subtitle: "B.Tech Computer Science — Semester 6" },
@@ -38,9 +37,7 @@ const DashboardHeader = ({ title, description }: DashboardHeaderProps) => {
             Welcome, {user.name} · {user.subtitle}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10">
-          <Bell className="h-5 w-5" />
-        </Button>
+        <NotificationBell />
       </div>
     </motion.header>
   );
