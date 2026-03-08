@@ -24,7 +24,7 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
   ],
   faculty: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Requests", url: "/dashboard/requests", icon: FileText },
+    { title: "Student Requests", url: "/dashboard/requests", icon: FileText },
     { title: "Assigned Projects", url: "/dashboard/projects", icon: FolderKanban },
     { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
   ],
