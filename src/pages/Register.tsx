@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GraduationCap, Mail, Lock, User, ArrowRight, Loader2, Hash, BookOpen, Layers } from "lucide-react";
+import { GraduationCap, Mail, Lock, User, ArrowRight, Loader2, Hash } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const Register = () => {
   const [form, setForm] = useState({
-    name: "", email: "", password: "", department: "", rollNumber: "", year: "", section: "", projectType: "",
+    name: "", email: "", password: "", department: "", registration_number: "", section: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const { register, error } = useAuth();
@@ -18,14 +19,15 @@ const Register = () => {
 
   const update = (field: string, value: string) => setForm((p) => ({ ...p, [field]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
-      const success = register(form);
-      if (success) navigate("/dashboard");
-      setSubmitting(false);
-    }, 600);
+    const success = await register(form);
+    if (success) {
+      toast({ title: "Registration Successful ✓", description: "Welcome to GuideConnect!" });
+      navigate("/dashboard");
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -75,7 +77,7 @@ const Register = () => {
               <Label className="text-sm font-medium">Password</Label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input type="password" placeholder="••••••••" value={form.password} onChange={(e) => update("password", e.target.value)} className="pl-10 glass border-border/50" required minLength={6} />
+                <Input type="password" placeholder="Min 6 characters" value={form.password} onChange={(e) => update("password", e.target.value)} className="pl-10 glass border-border/50" required minLength={6} />
               </div>
             </div>
 
@@ -94,49 +96,22 @@ const Register = () => {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Roll Number</Label>
+              <Label className="text-sm font-medium">Registration Number</Label>
               <div className="relative">
                 <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="CS2021001" value={form.rollNumber} onChange={(e) => update("rollNumber", e.target.value)} className="pl-10 glass border-border/50" required />
+                <Input placeholder="22B01A0501" value={form.registration_number} onChange={(e) => update("registration_number", e.target.value)} className="pl-10 glass border-border/50" required />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Year</Label>
-              <Select value={form.year} onValueChange={(v) => update("year", v)}>
-                <SelectTrigger className="glass border-border/50"><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1st Year</SelectItem>
-                  <SelectItem value="2">2nd Year</SelectItem>
-                  <SelectItem value="3">3rd Year</SelectItem>
-                  <SelectItem value="4">4th Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label className="text-sm font-medium">Section</Label>
               <Select value={form.section} onValueChange={(v) => update("section", v)}>
-                <SelectTrigger className="glass border-border/50"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectTrigger className="glass border-border/50"><SelectValue placeholder="Select section" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="A">Section A</SelectItem>
                   <SelectItem value="B">Section B</SelectItem>
                   <SelectItem value="C">Section C</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 col-span-2">
-              <Label className="text-sm font-medium">Project Type</Label>
-              <Select value={form.projectType} onValueChange={(v) => update("projectType", v)}>
-                <SelectTrigger className="glass border-border/50">
-                  <Layers size={16} className="mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Select project type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TBP">TBP (Term-Based Project)</SelectItem>
-                  <SelectItem value="Mini">Mini Project</SelectItem>
-                  <SelectItem value="Major">Major Project</SelectItem>
+                  <SelectItem value="D">Section D</SelectItem>
                 </SelectContent>
               </Select>
             </div>
