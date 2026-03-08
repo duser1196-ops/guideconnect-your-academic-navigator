@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -17,6 +19,9 @@ import Requests from "./pages/dashboard/Requests";
 import SendRequest from "./pages/dashboard/SendRequest";
 import Notifications from "./pages/dashboard/Notifications";
 import Profile from "./pages/dashboard/Profile";
+import AdminUsers from "./pages/dashboard/AdminUsers";
+import AddFaculty from "./pages/dashboard/AddFaculty";
+import AddCoordinator from "./pages/dashboard/AddCoordinator";
 
 const queryClient = new QueryClient();
 
@@ -26,23 +31,28 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardIndex />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="projects/create" element={<CreateProject />} />
-            <Route path="projects/:id" element={<ProjectDetail />} />
-            <Route path="faculty" element={<Faculty />} />
-            <Route path="requests" element={<Requests />} />
-            <Route path="requests/send" element={<SendRequest />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<DashboardIndex />} />
+              <Route path="projects" element={<ProtectedRoute allowedRoles={["student", "faculty", "coordinator"]}><Projects /></ProtectedRoute>} />
+              <Route path="projects/create" element={<ProtectedRoute allowedRoles={["student"]}><CreateProject /></ProtectedRoute>} />
+              <Route path="projects/:id" element={<ProtectedRoute allowedRoles={["student", "faculty", "coordinator"]}><ProjectDetail /></ProtectedRoute>} />
+              <Route path="faculty" element={<ProtectedRoute allowedRoles={["student", "coordinator"]}><Faculty /></ProtectedRoute>} />
+              <Route path="requests" element={<ProtectedRoute allowedRoles={["student", "faculty"]}><Requests /></ProtectedRoute>} />
+              <Route path="requests/send" element={<ProtectedRoute allowedRoles={["student"]}><SendRequest /></ProtectedRoute>} />
+              <Route path="notifications" element={<ProtectedRoute allowedRoles={["student", "faculty"]}><Notifications /></ProtectedRoute>} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
+              <Route path="admin/add-faculty" element={<ProtectedRoute allowedRoles={["admin"]}><AddFaculty /></ProtectedRoute>} />
+              <Route path="admin/add-coordinator" element={<ProtectedRoute allowedRoles={["admin"]}><AddCoordinator /></ProtectedRoute>} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
