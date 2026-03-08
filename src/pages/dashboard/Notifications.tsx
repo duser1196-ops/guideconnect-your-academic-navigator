@@ -17,10 +17,19 @@ const Notifications = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [filter, setFilter] = useState("all");
 
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
   const filtered = filter === "all"
     ? notifications
     : filter === "unread"
-    ? notifications.filter((n) => !n.read)
+    ? notifications.filter((n) => !n.is_read)
     : notifications.filter((n) => n.type === filter);
 
   return (
@@ -40,13 +49,10 @@ const Notifications = () => {
       <div className="flex items-center gap-3 mb-4">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter" />
-          </SelectTrigger>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="unread">Unread</SelectItem>
-            <SelectItem value="request_sent">Request Sent</SelectItem>
             <SelectItem value="request_accepted">Accepted</SelectItem>
             <SelectItem value="request_rejected">Rejected</SelectItem>
             <SelectItem value="info">Info</SelectItem>
@@ -57,30 +63,21 @@ const Notifications = () => {
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {filtered.map((n, i) => {
-            const config = typeConfig[n.type];
+            const config = typeConfig[n.type] || typeConfig.info;
             const Icon = config.icon;
             return (
-              <motion.div
-                key={n.id}
-                layout
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3, delay: i * 0.04 }}
-              >
-                <AnimatedCard
-                  delay={0}
-                  className={`flex items-start gap-3 cursor-pointer ${!n.read ? "border-l-2 border-l-primary" : ""}`}
-                >
+              <motion.div key={n.id} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
+                <AnimatedCard delay={0} className={`flex items-start gap-3 cursor-pointer ${!n.is_read ? "border-l-2 border-l-primary" : ""}`}>
                   <div onClick={() => markAsRead(n.id)} className="flex items-start gap-3 flex-1">
-                    <div className={`rounded-lg p-2 shrink-0 ${n.read ? "bg-muted" : config.className}`}>
-                      <Icon className={`h-4 w-4 ${n.read ? "text-muted-foreground" : "text-primary-foreground"}`} />
+                    <div className={`rounded-lg p-2 shrink-0 ${n.is_read ? "bg-muted" : config.className}`}>
+                      <Icon className={`h-4 w-4 ${n.is_read ? "text-muted-foreground" : "text-primary-foreground"}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-relaxed ${n.read ? "text-muted-foreground" : "font-medium"}`}>{n.message}</p>
+                      <p className={`text-sm font-medium ${n.is_read ? "text-muted-foreground" : ""}`}>{n.title}</p>
+                      <p className={`text-sm leading-relaxed ${n.is_read ? "text-muted-foreground" : ""}`}>{n.message}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-xs text-muted-foreground">{n.time}</p>
-                        {!n.read && <span className="text-[10px] font-medium text-primary">New</span>}
+                        <p className="text-xs text-muted-foreground">{formatTime(n.created_at)}</p>
+                        {!n.is_read && <span className="text-[10px] font-medium text-primary">New</span>}
                       </div>
                     </div>
                   </div>
@@ -90,7 +87,7 @@ const Notifications = () => {
           })}
         </AnimatePresence>
         {filtered.length === 0 && (
-          <p className="text-center py-10 text-muted-foreground text-sm">No notifications match this filter.</p>
+          <p className="text-center py-10 text-muted-foreground text-sm">No notifications found.</p>
         )}
       </div>
     </div>

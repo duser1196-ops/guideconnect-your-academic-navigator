@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, CheckCircle, XCircle, Send, Info, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNotifications, Notification } from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useNavigate } from "react-router-dom";
 
 const typeConfig: Record<string, { icon: typeof Bell; className: string }> = {
@@ -16,6 +16,15 @@ const NotificationBell = () => {
   const [open, setOpen] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
 
   return (
     <div className="relative">
@@ -45,16 +54,7 @@ const NotificationBell = () => {
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
-            />
-
-            {/* Panel */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: -8, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -72,42 +72,39 @@ const NotificationBell = () => {
               </div>
 
               <div className="max-h-80 overflow-y-auto">
-                {notifications.slice(0, 6).map((n, i) => {
-                  const config = typeConfig[n.type];
-                  const Icon = config.icon;
-                  return (
-                    <motion.div
-                      key={n.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      onClick={() => markAsRead(n.id)}
-                      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border last:border-b-0 ${
-                        !n.read ? "bg-primary/5" : ""
-                      }`}
-                    >
-                      <div className={`rounded-lg p-1.5 shrink-0 mt-0.5 ${config.className}`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs leading-relaxed ${!n.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                          {n.message}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{n.time}</p>
-                      </div>
-                      {!n.read && <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
-                    </motion.div>
-                  );
-                })}
+                {notifications.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-6">No notifications yet</p>
+                ) : (
+                  notifications.slice(0, 6).map((n, i) => {
+                    const config = typeConfig[n.type] || typeConfig.info;
+                    const Icon = config.icon;
+                    return (
+                      <motion.div
+                        key={n.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        onClick={() => markAsRead(n.id)}
+                        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border last:border-b-0 ${!n.is_read ? "bg-primary/5" : ""}`}
+                      >
+                        <div className={`rounded-lg p-1.5 shrink-0 mt-0.5 ${config.className}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs leading-relaxed ${!n.is_read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                            {n.title}: {n.message}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">{formatTime(n.created_at)}</p>
+                        </div>
+                        {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+                      </motion.div>
+                    );
+                  })
+                )}
               </div>
 
               <div className="border-t border-border px-4 py-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={() => { setOpen(false); navigate("/dashboard/notifications"); }}
-                >
+                <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => { setOpen(false); navigate("/dashboard/notifications"); }}>
                   View all notifications
                 </Button>
               </div>
