@@ -38,6 +38,8 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
     { title: "Users", url: "/dashboard/admin/users", icon: Users },
     { title: "Add Faculty", url: "/dashboard/admin/add-faculty", icon: UserPlus },
     { title: "Add Coordinator", url: "/dashboard/admin/add-coordinator", icon: Shield },
+    { title: "Projects", url: "/dashboard/admin/projects", icon: FolderKanban },
+    { title: "Assignments", url: "/dashboard/admin/assignments", icon: ClipboardList },
   ],
 };
 
