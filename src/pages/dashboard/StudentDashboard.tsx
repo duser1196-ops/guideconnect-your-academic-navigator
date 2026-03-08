@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
+import { toast } from "@/hooks/use-toast";
 
 const quickActions = [
   { label: "View Faculty", icon: Users, path: "/dashboard/faculty", color: "from-primary to-primary/70" },
