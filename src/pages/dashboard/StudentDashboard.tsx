@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock, Send, CheckCircle, FolderKanban, Users, Sparkles, Star } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
