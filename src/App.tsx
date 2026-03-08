@@ -14,6 +14,7 @@ import CreateProject from "./pages/dashboard/CreateProject";
 import ProjectDetail from "./pages/dashboard/ProjectDetail";
 import Faculty from "./pages/dashboard/Faculty";
 import Requests from "./pages/dashboard/Requests";
+import SendRequest from "./pages/dashboard/SendRequest";
 import Notifications from "./pages/dashboard/Notifications";
 import Profile from "./pages/dashboard/Profile";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="faculty" element={<Faculty />} />
             <Route path="requests" element={<Requests />} />
+            <Route path="requests/send" element={<SendRequest />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="profile" element={<Profile />} />
           </Route>
