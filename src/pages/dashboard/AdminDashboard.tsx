@@ -16,10 +16,10 @@ const AdminDashboard = () => (
     <DashboardHeader title="Admin Dashboard" description="System management and user administration." />
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <StatCard icon={Users} title="Total Users" value={186} subtitle="12 new this week" delay={0} trend={{ value: "8%", positive: true }} />
-      <StatCard icon={Shield} title="Coordinators" value={6} subtitle="Across 3 departments" delay={0.1} />
-      <StatCard icon={UserPlus} title="Faculty" value={48} subtitle="3 pending approval" delay={0.2} />
-      <StatCard icon={FolderKanban} title="Active Projects" value={105} subtitle="All departments" delay={0.3} trend={{ value: "12%", positive: true }} />
+      <StatCard icon={GraduationCap} title="Total Students" value={132} subtitle="Across all departments" delay={0} trend={{ value: "8%", positive: true }} />
+      <StatCard icon={UserPlus} title="Total Faculty" value={48} subtitle="3 pending approval" delay={0.1} />
+      <StatCard icon={Shield} title="Total Coordinators" value={6} subtitle="Across 3 departments" delay={0.2} />
+      <StatCard icon={FolderKanban} title="Total Projects" value={105} subtitle="All departments" delay={0.3} trend={{ value: "12%", positive: true }} />
     </div>
 
     <div className="grid lg:grid-cols-2 gap-6">
