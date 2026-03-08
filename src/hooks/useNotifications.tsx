@@ -16,6 +16,7 @@ interface NotificationContextType {
   unreadCount: number;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
   loading: boolean;
 }
 
@@ -24,6 +25,7 @@ const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   markAsRead: () => {},
   markAllAsRead: () => {},
+  deleteNotification: () => {},
   loading: true,
 });
 
@@ -74,8 +76,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };
 
+  const deleteNotification = async (id: string) => {
+    await supabase.from("notifications").delete().eq("id", id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, loading }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, loading }}>
       {children}
     </NotificationContext.Provider>
   );

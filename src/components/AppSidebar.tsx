@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard, FolderKanban, Users, FileText, Bell, UserCircle, ChevronLeft, GraduationCap,
-  LogOut, Shield, UserPlus, UsersRound, ClipboardList,
+  LogOut, Shield, UserPlus, UsersRound, ClipboardList, Megaphone,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -26,12 +26,14 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Student Requests", url: "/dashboard/requests", icon: FileText },
     { title: "Assigned Projects", url: "/dashboard/projects", icon: FolderKanban },
+    { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
     { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
   ],
   coordinator: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Section Students", url: "/dashboard/section-students", icon: UsersRound },
     { title: "Faculty Allocation", url: "/dashboard/faculty-allocation", icon: ClipboardList },
+    { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
   ],
   admin: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },

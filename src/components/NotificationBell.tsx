@@ -9,6 +9,8 @@ const typeConfig: Record<string, { icon: typeof Bell; className: string }> = {
   request_sent: { icon: Send, className: "bg-primary/10 text-primary" },
   request_accepted: { icon: CheckCircle, className: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" },
   request_rejected: { icon: XCircle, className: "bg-destructive/10 text-destructive" },
+  assignment: { icon: CheckCircle, className: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" },
+  announcement: { icon: Bell, className: "bg-primary/10 text-primary" },
   info: { icon: Info, className: "bg-muted text-muted-foreground" },
 };
 

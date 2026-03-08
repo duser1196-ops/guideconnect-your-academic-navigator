@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, CheckCircle, XCircle, Send, Info, CheckCheck, Filter } from "lucide-react";
+import { Bell, CheckCircle, XCircle, Send, Info, CheckCheck, Filter, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -10,11 +10,13 @@ const typeConfig: Record<string, { icon: typeof Bell; className: string; label: 
   request_sent: { icon: Send, className: "gradient-primary", label: "Request Sent" },
   request_accepted: { icon: CheckCircle, className: "bg-green-500", label: "Accepted" },
   request_rejected: { icon: XCircle, className: "bg-destructive", label: "Rejected" },
+  assignment: { icon: CheckCircle, className: "bg-green-500", label: "Assignment" },
+  announcement: { icon: Bell, className: "gradient-primary", label: "Announcement" },
   info: { icon: Info, className: "bg-muted", label: "Info" },
 };
 
 const Notifications = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const [filter, setFilter] = useState("all");
 
   const formatTime = (dateStr: string) => {
@@ -53,8 +55,11 @@ const Notifications = () => {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="unread">Unread</SelectItem>
+            <SelectItem value="request_sent">Requests</SelectItem>
             <SelectItem value="request_accepted">Accepted</SelectItem>
             <SelectItem value="request_rejected">Rejected</SelectItem>
+            <SelectItem value="assignment">Assignments</SelectItem>
+            <SelectItem value="announcement">Announcements</SelectItem>
             <SelectItem value="info">Info</SelectItem>
           </SelectContent>
         </Select>
@@ -67,8 +72,8 @@ const Notifications = () => {
             const Icon = config.icon;
             return (
               <motion.div key={n.id} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
-                <AnimatedCard delay={0} className={`flex items-start gap-3 cursor-pointer ${!n.is_read ? "border-l-2 border-l-primary" : ""}`}>
-                  <div onClick={() => markAsRead(n.id)} className="flex items-start gap-3 flex-1">
+                <AnimatedCard delay={0} className={`flex items-start gap-3 ${!n.is_read ? "border-l-2 border-l-primary" : ""}`}>
+                  <div onClick={() => markAsRead(n.id)} className="flex items-start gap-3 flex-1 cursor-pointer">
                     <div className={`rounded-lg p-2 shrink-0 ${n.is_read ? "bg-muted" : config.className}`}>
                       <Icon className={`h-4 w-4 ${n.is_read ? "text-muted-foreground" : "text-primary-foreground"}`} />
                     </div>
@@ -81,6 +86,9 @@ const Notifications = () => {
                       </div>
                     </div>
                   </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => deleteNotification(n.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </AnimatedCard>
               </motion.div>
             );
