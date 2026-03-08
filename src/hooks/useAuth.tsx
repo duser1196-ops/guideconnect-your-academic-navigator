@@ -128,6 +128,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (data: StudentRegisterData): Promise<boolean> => {
     setError("");
 
+    // Validate MVSREC email domain
+    if (!data.email.toLowerCase().endsWith("@mvsrec.edu.in")) {
+      setError("Only MVSREC institutional email addresses (@mvsrec.edu.in) are allowed for student registration.");
+      return false;
+    }
+
     // Sign up with Supabase Auth
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: data.email,

@@ -70,7 +70,7 @@ const Register = () => {
               <Label className="text-sm font-medium">Email</Label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input type="email" placeholder="you@university.edu" value={form.email} onChange={(e) => update("email", e.target.value)} className="pl-10 glass border-border/50" required />
+                <Input type="email" placeholder="you@mvsrec.edu.in" value={form.email} onChange={(e) => update("email", e.target.value)} className="pl-10 glass border-border/50" required />
               </div>
             </div>
             <div className="space-y-2 col-span-2">
