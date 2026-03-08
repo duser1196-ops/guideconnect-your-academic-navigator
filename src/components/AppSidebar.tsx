@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard, FolderKanban, Users, FileText, Bell, UserCircle, ChevronLeft, GraduationCap,
-  LogOut, Shield, UserPlus, UsersRound, ClipboardList,
+  LogOut, Shield, UserPlus, UsersRound, ClipboardList, Megaphone,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
