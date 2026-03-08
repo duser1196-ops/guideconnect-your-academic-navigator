@@ -25,6 +25,7 @@ const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   markAsRead: () => {},
   markAllAsRead: () => {},
+  deleteNotification: () => {},
   loading: true,
 });
 
