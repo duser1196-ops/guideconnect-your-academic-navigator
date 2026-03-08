@@ -1,18 +1,35 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
-  { label: "Home", path: "/" },
-  { label: "Features", path: "/#features" },
-  { label: "About", path: "/#about" },
+  { label: "Home", path: "/", hash: "" },
+  { label: "Features", path: "/", hash: "#features" },
+  { label: "About", path: "/", hash: "#about" },
 ];
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavClick = useCallback((path: string, hash: string) => {
+    setMobileOpen(false);
+    if (location.pathname !== path) {
+      navigate(path);
+      if (hash) {
+        setTimeout(() => {
+          document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+        }, 300);
+      }
+    } else if (hash) {
+      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [location.pathname, navigate]);
 
   return (
     <motion.nav
@@ -32,15 +49,15 @@ const Navbar = () => {
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === link.path ? "text-primary" : "text-muted-foreground"
+            <button
+              key={link.label}
+              onClick={() => handleNavClick(link.path, link.hash)}
+              className={`text-sm font-medium transition-colors hover:text-primary bg-transparent border-none cursor-pointer ${
+                location.pathname === link.path && !link.hash ? "text-primary" : "text-muted-foreground"
               }`}
             >
               {link.label}
-            </Link>
+            </button>
           ))}
         </div>
 
@@ -70,14 +87,13 @@ const Navbar = () => {
           >
             <div className="flex flex-col gap-3 p-4">
               {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setMobileOpen(false)}
-                  className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                <button
+                  key={link.label}
+                  onClick={() => handleNavClick(link.path, link.hash)}
+                  className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors py-2 bg-transparent border-none cursor-pointer text-left"
                 >
                   {link.label}
-                </Link>
+                </button>
               ))}
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" size="sm" className="flex-1" asChild>
