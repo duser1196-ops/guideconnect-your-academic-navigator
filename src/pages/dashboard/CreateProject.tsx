@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, FileText, Tag, Layers, AlignLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Tag, Layers, AlignLeft, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
 const steps = [
+  { label: "Select Student", icon: Users },
   { label: "Basic Info", icon: FileText },
   { label: "Details", icon: AlignLeft },
   { label: "Classification", icon: Layers },
@@ -23,38 +24,69 @@ const steps = [
 
 const domains = ["Machine Learning", "Web Development", "Data Science", "Cybersecurity", "IoT", "Cloud Computing", "Blockchain", "Mobile Development"];
 
+interface StudentOption {
+  id: string;
+  name: string;
+  registration_number: string | null;
+  hasProject: boolean;
+}
+
 const CreateProject = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ title: "", description: "", domain: "", type: "", technologies: "" });
+  const [form, setForm] = useState({ studentId: "", title: "", description: "", domain: "", type: "", technologies: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<StudentOption[]>([]);
 
-  // Check if student already has a project
+  // Load section students
   useEffect(() => {
     if (!user) return;
-    const checkExisting = async () => {
-      const { data } = await supabase
-        .from("projects")
-        .select("id, status")
-        .eq("student_id", user.id)
-        .in("status", ["draft", "request_sent", "assigned"])
-        .limit(1);
+    const fetchStudents = async () => {
+      const { data: sections } = await supabase
+        .from("coordinator_sections")
+        .select("department, section")
+        .eq("coordinator_id", user.id);
 
-      if (data && data.length > 0) {
-        toast({
-          title: "Project Already Exists",
-          description: "You already have an active project. Redirecting to edit it.",
-        });
-        navigate(`/dashboard/projects/${data[0].id}`);
-        return;
-      }
-      setChecking(false);
+      if (!sections || sections.length === 0) { setLoading(false); return; }
+      const sec = sections[0];
+
+      const { data: studentData } = await supabase
+        .from("users")
+        .select("id, name, registration_number")
+        .eq("role", "student")
+        .eq("department", sec.department)
+        .eq("section", sec.section);
+
+      // Check which students already have active projects
+      const enriched: StudentOption[] = await Promise.all(
+        (studentData || []).map(async (s) => {
+          const { data: projects } = await supabase
+            .from("projects")
+            .select("id")
+            .eq("student_id", s.id)
+            .in("status", ["draft", "request_sent", "assigned"])
+            .limit(1);
+
+          return {
+            id: s.id,
+            name: s.name,
+            registration_number: s.registration_number,
+            hasProject: (projects && projects.length > 0),
+          };
+        })
+      );
+
+      setStudents(enriched);
+      setLoading(false);
     };
-    checkExisting();
-  }, [user, navigate]);
+    fetchStudents();
+  }, [user]);
+
+  const availableStudents = students.filter((s) => !s.hasProject);
+  const selectedStudent = students.find((s) => s.id === form.studentId);
 
   const update = (field: string, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
@@ -63,9 +95,10 @@ const CreateProject = () => {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (step === 0 && !form.title.trim()) e.title = "Project title is required";
-    if (step === 1 && !form.description.trim()) e.description = "Description is required";
-    if (step === 2) {
+    if (step === 0 && !form.studentId) e.studentId = "Select a student";
+    if (step === 1 && !form.title.trim()) e.title = "Project title is required";
+    if (step === 2 && !form.description.trim()) e.description = "Description is required";
+    if (step === 3) {
       if (!form.domain) e.domain = "Select a domain";
       if (!form.type) e.type = "Select a project type";
     }
@@ -86,7 +119,7 @@ const CreateProject = () => {
       .filter(Boolean);
 
     const { error } = await supabase.from("projects").insert({
-      student_id: user.id,
+      student_id: form.studentId,
       title: form.title,
       description: form.description,
       domain: form.domain,
@@ -96,13 +129,13 @@ const CreateProject = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Project Created! 🎉", description: `"${form.title}" has been created successfully.` });
-      navigate("/dashboard/projects");
+      toast({ title: "Project Created! 🎉", description: `"${form.title}" assigned to ${selectedStudent?.name}.` });
+      navigate("/dashboard/section-students");
     }
     setSubmitting(false);
   };
 
-  if (checking) return <DashboardSkeleton />;
+  if (loading) return <DashboardSkeleton />;
 
   const slideVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
@@ -113,10 +146,10 @@ const CreateProject = () => {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/projects")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/section-students")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="font-display text-2xl font-bold">Create Project</h1>
+        <h1 className="font-display text-2xl font-bold">Create Project for Student</h1>
       </div>
 
       {/* Progress indicator */}
@@ -155,8 +188,38 @@ const CreateProject = () => {
           <motion.div key={step} custom={1} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeOut" }}>
             {step === 0 && (
               <div className="space-y-4">
+                <h3 className="font-display font-semibold text-lg">Select Student</h3>
+                <p className="text-sm text-muted-foreground">Choose a student from your section to assign a project to.</p>
+                {availableStudents.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Users className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">All students in your section already have active projects.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Student *</Label>
+                    <Select value={form.studentId} onValueChange={(v) => update("studentId", v)}>
+                      <SelectTrigger className={errors.studentId ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select a student" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStudents.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} {s.registration_number ? `(${s.registration_number})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.studentId && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.studentId}</motion.p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-4">
                 <h3 className="font-display font-semibold text-lg">Project Title</h3>
-                <p className="text-sm text-muted-foreground">Choose a clear, descriptive title for your project.</p>
+                <p className="text-sm text-muted-foreground">Choose a clear, descriptive title for the project.</p>
                 <div className="space-y-2">
                   <Label htmlFor="title">Title *</Label>
                   <Input id="title" placeholder="e.g. ML-based Healthcare Diagnostics" value={form.title} onChange={(e) => update("title", e.target.value)} className={errors.title ? "border-destructive" : ""} />
@@ -165,13 +228,13 @@ const CreateProject = () => {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div className="space-y-4">
                 <h3 className="font-display font-semibold text-lg">Project Description</h3>
                 <p className="text-sm text-muted-foreground">Describe the objectives, methodology, and expected outcomes.</p>
                 <div className="space-y-2">
                   <Label htmlFor="desc">Description *</Label>
-                  <Textarea id="desc" rows={5} placeholder="Describe your project in detail…" value={form.description} onChange={(e) => update("description", e.target.value)} className={errors.description ? "border-destructive" : ""} />
+                  <Textarea id="desc" rows={5} placeholder="Describe the project in detail…" value={form.description} onChange={(e) => update("description", e.target.value)} className={errors.description ? "border-destructive" : ""} />
                   {errors.description && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.description}</motion.p>}
                   <p className="text-xs text-muted-foreground text-right">{form.description.length} characters</p>
                 </div>
@@ -183,10 +246,10 @@ const CreateProject = () => {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div className="space-y-5">
                 <h3 className="font-display font-semibold text-lg">Classification</h3>
-                <p className="text-sm text-muted-foreground">Select the domain and type for your project.</p>
+                <p className="text-sm text-muted-foreground">Select the domain and type for the project.</p>
                 <div className="space-y-2">
                   <Label>Domain *</Label>
                   <Select value={form.domain} onValueChange={(v) => update("domain", v)}>
@@ -210,12 +273,13 @@ const CreateProject = () => {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div className="space-y-5">
                 <h3 className="font-display font-semibold text-lg">Review & Submit</h3>
-                <p className="text-sm text-muted-foreground">Please review your project details before submitting.</p>
+                <p className="text-sm text-muted-foreground">Review the project details before creating.</p>
                 <div className="space-y-3 p-4 rounded-lg bg-muted/40 border border-border">
                   {[
+                    { label: "Student", value: selectedStudent ? `${selectedStudent.name} (${selectedStudent.registration_number || "—"})` : "—" },
                     { label: "Title", value: form.title },
                     { label: "Description", value: form.description },
                     { label: "Domain", value: form.domain },
@@ -242,7 +306,7 @@ const CreateProject = () => {
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
           {step < steps.length - 1 ? (
-            <Button onClick={next} className="gap-2">Next <ArrowRight className="h-4 w-4" /></Button>
+            <Button onClick={next} className="gap-2" disabled={step === 0 && availableStudents.length === 0}>Next <ArrowRight className="h-4 w-4" /></Button>
           ) : (
             <Button onClick={handleSubmit} className="gap-2" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
