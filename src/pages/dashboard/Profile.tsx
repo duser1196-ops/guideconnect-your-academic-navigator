@@ -1,17 +1,20 @@
 import { motion } from "framer-motion";
-import { useRole } from "@/hooks/useRole";
+import { useAuth } from "@/hooks/useAuth";
 import AnimatedCard from "@/components/AnimatedCard";
 import { Mail, Phone, MapPin, GraduationCap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-const profiles = {
-  student: { name: "Alex Johnson", email: "alex@university.edu", phone: "+1 234 567 890", location: "New York, USA", role: "B.Tech Computer Science — Semester 6" },
-  faculty: { name: "Dr. Sarah Chen", email: "chen@university.edu", phone: "+1 987 654 321", location: "Boston, USA", role: "Associate Professor — CS Department" },
-  coordinator: { name: "Prof. Williams", email: "williams@university.edu", phone: "+1 555 123 456", location: "San Francisco, USA", role: "Academic Coordinator — Engineering" },
+const profilesByRole: Record<string, { phone: string; location: string; detail: string }> = {
+  student: { phone: "+1 234 567 890", location: "New York, USA", detail: "B.Tech Computer Science — Semester 6" },
+  faculty: { phone: "+1 987 654 321", location: "Boston, USA", detail: "Associate Professor — CS Department" },
+  coordinator: { phone: "+1 555 123 456", location: "San Francisco, USA", detail: "Academic Coordinator — Engineering" },
+  admin: { phone: "+1 000 000 000", location: "HQ", detail: "System Administrator" },
 };
 
 const Profile = () => {
-  const { role } = useRole();
-  const p = profiles[role];
+  const { user } = useAuth();
+  const role = user?.role || "student";
+  const p = profilesByRole[role];
 
   return (
     <div>
@@ -19,21 +22,18 @@ const Profile = () => {
       <div className="max-w-2xl">
         <AnimatedCard>
           <div className="flex items-center gap-4 mb-6">
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="gradient-primary rounded-full h-16 w-16 flex items-center justify-center"
-            >
+            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="gradient-primary rounded-full h-16 w-16 flex items-center justify-center">
               <GraduationCap className="h-8 w-8 text-primary-foreground" />
             </motion.div>
             <div>
-              <h2 className="font-display text-xl font-bold">{p.name}</h2>
-              <p className="text-sm text-muted-foreground">{p.role}</p>
+              <h2 className="font-display text-xl font-bold">{user?.name}</h2>
+              <p className="text-sm text-muted-foreground">{p.detail}</p>
+              <Badge variant="outline" className="mt-1 text-xs capitalize">{role}</Badge>
             </div>
           </div>
           <div className="space-y-4">
             {[
-              { icon: Mail, label: "Email", value: p.email },
+              { icon: Mail, label: "Email", value: user?.email },
               { icon: Phone, label: "Phone", value: p.phone },
               { icon: MapPin, label: "Location", value: p.location },
             ].map((item) => (

@@ -1,53 +1,80 @@
 import { motion } from "framer-motion";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard, FolderKanban, Users, FileText, Bell, UserCircle, ChevronLeft, GraduationCap,
+  LogOut, Shield, UserPlus, UsersRound, ClipboardList,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
-import { useRole, UserRole } from "@/hooks/useRole";
+import { useAuth, AuthRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Projects", url: "/dashboard/projects", icon: FolderKanban },
-  { title: "Faculty", url: "/dashboard/faculty", icon: Users },
-  { title: "Requests", url: "/dashboard/requests", icon: FileText },
-  { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
-  { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
-];
+const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof LayoutDashboard }[]> = {
+  student: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Projects", url: "/dashboard/projects", icon: FolderKanban },
+    { title: "Faculty", url: "/dashboard/faculty", icon: Users },
+    { title: "Requests", url: "/dashboard/requests", icon: FileText },
+    { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
+    { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
+  ],
+  faculty: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Requests", url: "/dashboard/requests", icon: FileText },
+    { title: "Assigned Projects", url: "/dashboard/projects", icon: FolderKanban },
+    { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
+  ],
+  coordinator: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Section Students", url: "/dashboard/faculty", icon: UsersRound },
+    { title: "Faculty Allocation", url: "/dashboard/projects", icon: ClipboardList },
+  ],
+  admin: [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Users", url: "/dashboard/admin/users", icon: Users },
+    { title: "Add Faculty", url: "/dashboard/admin/add-faculty", icon: UserPlus },
+    { title: "Add Coordinator", url: "/dashboard/admin/add-coordinator", icon: Shield },
+  ],
+};
 
-const roleLabels: Record<UserRole, string> = {
+const roleLabels: Record<AuthRole, string> = {
   student: "Student",
   faculty: "Faculty",
   coordinator: "Coordinator",
+  admin: "Admin",
 };
 
-const roleColors: Record<UserRole, string> = {
+const roleColors: Record<AuthRole, string> = {
   student: "bg-primary",
   faculty: "bg-secondary",
   coordinator: "bg-accent",
+  admin: "bg-destructive",
 };
 
 export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
-  const { role, setRole } = useRole();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const role = user?.role || "student";
+  const navItems = navByRole[role];
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
           {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2.5"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2.5">
               <div className="gradient-primary rounded-lg p-1.5">
                 <GraduationCap className="h-4 w-4 text-primary-foreground" />
               </div>
@@ -86,26 +113,17 @@ export function AppSidebar() {
       </SidebarContent>
 
       {!collapsed && (
-        <SidebarFooter className="p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-            <p className="text-xs text-muted-foreground font-medium mb-2">Switch Role</p>
-            <div className="flex flex-col gap-1">
-              {(["student", "faculty", "coordinator"] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRole(r)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    role === r
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${roleColors[r]}`} />
-                  {roleLabels[r]}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+        <SidebarFooter className="p-4 space-y-3">
+          <div className="flex items-center gap-2 px-2">
+            <div className={`w-2 h-2 rounded-full ${roleColors[role]}`} />
+            <span className="text-xs font-medium text-muted-foreground">{user?.name}</span>
+            <Badge variant="outline" className="text-[10px] ml-auto px-1.5 py-0">
+              {roleLabels[role]}
+            </Badge>
+          </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" /> Sign out
+          </Button>
         </SidebarFooter>
       )}
     </Sidebar>
