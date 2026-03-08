@@ -26,6 +26,7 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Student Requests", url: "/dashboard/requests", icon: FileText },
     { title: "Assigned Projects", url: "/dashboard/projects", icon: FolderKanban },
+    { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
     { title: "Profile", url: "/dashboard/profile", icon: UserCircle },
   ],
   coordinator: [
