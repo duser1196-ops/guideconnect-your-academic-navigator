@@ -190,10 +190,45 @@
     transform: translateY(-1px);
   }
   .btn-gradient:active {
-    transform: translateY(0);
+    transform: translateY(0) scale(0.98);
   }
   .btn-gradient > * {
     @apply relative z-10;
+  }
+
+  /* Button press effect for all buttons */
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active {
+    transform: scale(0.97);
+  }
+
+  /* Table row hover */
+  .table-row-hover tr {
+    @apply transition-colors duration-200;
+  }
+  .table-row-hover tbody tr:hover {
+    @apply bg-muted/50;
+  }
+
+  /* Input focus glow */
+  input:focus,
+  textarea:focus,
+  select:focus,
+  [role="combobox"]:focus {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  }
+
+  /* Link hover animation */
+  .nav-link-hover {
+    @apply relative transition-colors duration-200;
+  }
+  .nav-link-hover::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-[2px] rounded-full transition-all duration-300;
+    background: var(--gradient-primary);
+  }
+  .nav-link-hover:hover::after {
+    @apply w-full;
   }
 
   /* Subtle dot grid background */
