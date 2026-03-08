@@ -1,14 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import AnimatedCard from "@/components/AnimatedCard";
-import { FolderKanban, Plus, Calendar, Users } from "lucide-react";
+import { FolderKanban, Plus, Calendar, Users, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
 
 const initialProjects = [
   { id: 1, title: "ML in Healthcare", mentor: "Dr. Ramesh Kumar", status: "In Progress", progress: 65, date: "Jan 2026" },
@@ -27,44 +23,15 @@ const statusVariant: Record<string, "default" | "secondary" | "outline"> = {
 
 const Projects = () => {
   const [projects] = useState(initialProjects);
-
-  const handleCreate = () => {
-    toast({ title: "Project Created!", description: "Your new project has been added." });
-  };
+  const navigate = useNavigate();
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-2xl font-bold">My Projects</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Create Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Project</DialogTitle>
-              <DialogDescription>Fill in the details for your new project.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="title">Project Title</Label>
-                <Input id="title" placeholder="Enter project title" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="desc">Description</Label>
-                <Textarea id="desc" placeholder="Describe your project…" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline">Cancel</Button>
-              <Button onClick={handleCreate} className="gap-2">
-                <Plus className="h-4 w-4" /> Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button className="gap-2" onClick={() => navigate("/dashboard/projects/create")}>
+          <Plus className="h-4 w-4" /> Create Project
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -83,7 +50,7 @@ const Projects = () => {
               <p className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mentor: {p.mentor}</p>
               <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Started: {p.date}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                 <motion.div
                   className="h-full rounded-full gradient-primary"
@@ -94,6 +61,14 @@ const Projects = () => {
               </div>
               <span className="text-xs font-medium text-muted-foreground">{p.progress}%</span>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full gap-2 text-xs"
+              onClick={() => navigate(`/dashboard/projects/${p.id}`)}
+            >
+              <Eye className="h-3.5 w-3.5" /> View Details
+            </Button>
           </AnimatedCard>
         ))}
       </div>

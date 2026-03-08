@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 import DashboardLayout from "./layouts/DashboardLayout";
 import DashboardIndex from "./pages/dashboard/DashboardIndex";
 import Projects from "./pages/dashboard/Projects";
+import CreateProject from "./pages/dashboard/CreateProject";
+import ProjectDetail from "./pages/dashboard/ProjectDetail";
 import Faculty from "./pages/dashboard/Faculty";
 import Requests from "./pages/dashboard/Requests";
 import Notifications from "./pages/dashboard/Notifications";
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardIndex />} />
             <Route path="projects" element={<Projects />} />
+            <Route path="projects/create" element={<CreateProject />} />
+            <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="faculty" element={<Faculty />} />
             <Route path="requests" element={<Requests />} />
             <Route path="notifications" element={<Notifications />} />
