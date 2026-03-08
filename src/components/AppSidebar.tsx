@@ -33,6 +33,7 @@ const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof Lay
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Section Students", url: "/dashboard/section-students", icon: UsersRound },
     { title: "Faculty Allocation", url: "/dashboard/faculty-allocation", icon: ClipboardList },
+    { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
   ],
   admin: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
