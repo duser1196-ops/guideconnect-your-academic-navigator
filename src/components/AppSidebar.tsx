@@ -64,8 +64,8 @@ export function AppSidebar() {
   const role = user?.role || "student";
   const navItems = navByRole[role];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 

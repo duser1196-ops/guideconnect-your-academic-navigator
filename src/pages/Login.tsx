@@ -15,18 +15,15 @@ const Login = () => {
   const { login, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
-      const success = login(email, password);
-      if (success) {
-        const stored = JSON.parse(localStorage.getItem("guideconnect_user") || "{}");
-        toast({ title: "Login Successful ✓", description: `Welcome back, ${stored.name}!` });
-        navigate(roleRedirects[stored.role as keyof typeof roleRedirects] || "/dashboard");
-      }
-      setSubmitting(false);
-    }, 600);
+    const success = await login(email, password);
+    if (success) {
+      toast({ title: "Login Successful ✓", description: "Welcome back!" });
+      navigate("/dashboard");
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -102,27 +99,6 @@ const Login = () => {
           Don't have an account?{" "}
           <Link to="/register" className="text-primary font-medium hover:underline">Sign up</Link>
         </p>
-
-        <div className="mt-6 pt-4 border-t border-border/50">
-          <p className="text-xs text-muted-foreground text-center mb-2">Demo accounts</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Student", email: "student@test.com" },
-              { label: "Faculty", email: "faculty@test.com" },
-              { label: "Coordinator", email: "coordinator@test.com" },
-              { label: "Admin", email: "admin@test.com" },
-            ].map((d) => (
-              <button
-                key={d.label}
-                type="button"
-                onClick={() => { setEmail(d.email); setPassword("123456"); }}
-                className="text-xs px-2 py-1.5 rounded-md border border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </motion.div>
     </div>
   );
