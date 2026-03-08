@@ -50,95 +50,108 @@ const CoordinatorDashboard = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [coordSection, setCoordSection] = useState<{ department: string; section: string } | null>(null);
 
+  const fetchAll = useCallback(async () => {
+    if (!user) return;
+    // Get coordinator's assigned sections
+    const { data: sections } = await supabase
+      .from("coordinator_sections")
+      .select("department, section")
+      .eq("coordinator_id", user.id);
+
+    if (!sections || sections.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const sec = sections[0];
+    setCoordSection(sec);
+
+    const { data: studentData } = await supabase
+      .from("users")
+      .select("id, name, registration_number, section, department")
+      .eq("role", "student")
+      .eq("department", sec.department)
+      .eq("section", sec.section);
+
+    const studentList = studentData || [];
+
+    const enriched: SectionStudent[] = await Promise.all(
+      studentList.map(async (s) => {
+        const { data: projects } = await supabase
+          .from("projects")
+          .select("title, status")
+          .eq("student_id", s.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        let facultyName: string | null = null;
+        if (projects && projects.length > 0 && projects[0].status === "assigned") {
+          const { data: assignment } = await supabase
+            .from("assignments")
+            .select("faculty:users!assignments_faculty_id_fkey(name)")
+            .eq("student_id", s.id)
+            .limit(1)
+            .single();
+          facultyName = (assignment as any)?.faculty?.name || null;
+        }
+
+        return {
+          id: s.id,
+          name: s.name,
+          registration_number: s.registration_number,
+          project: projects && projects.length > 0 ? projects[0] : null,
+          facultyName,
+        };
+      })
+    );
+
+    setStudents(enriched);
+
+    const { data: facultyData } = await supabase
+      .from("users")
+      .select("id, name, department, max_students")
+      .eq("role", "faculty")
+      .eq("department", sec.department);
+
+    const facultyList = await Promise.all(
+      (facultyData || []).map(async (f) => {
+        const { count } = await supabase
+          .from("assignments")
+          .select("id", { count: "exact", head: true })
+          .eq("faculty_id", f.id);
+        return { ...f, max_students: f.max_students || 5, assignedCount: count || 0 };
+      })
+    );
+    setFaculty(facultyList);
+
+    const { count: pendCount } = await supabase
+      .from("guide_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    setPendingRequests(pendCount || 0);
+
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Realtime subscriptions
   useEffect(() => {
     if (!user) return;
-    const fetchAll = async () => {
-      // Get coordinator's assigned sections
-      const { data: sections } = await supabase
-        .from("coordinator_sections")
-        .select("department, section")
-        .eq("coordinator_id", user.id);
 
-      if (!sections || sections.length === 0) {
-        setLoading(false);
-        return;
-      }
+    const channel = supabase
+      .channel('coordinator-dashboard')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignments' }, () => {
+        toast({ title: "📋 New Assignment", description: "A project assignment has been updated." });
+        fetchAll();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'guide_requests' }, () => {
+        fetchAll();
+      })
+      .subscribe();
 
-      const sec = sections[0];
-      setCoordSection(sec);
-
-      // Get students in that department+section
-      const { data: studentData } = await supabase
-        .from("users")
-        .select("id, name, registration_number, section, department")
-        .eq("role", "student")
-        .eq("department", sec.department)
-        .eq("section", sec.section);
-
-      const studentList = studentData || [];
-
-      // For each student, get project and assigned faculty
-      const enriched: SectionStudent[] = await Promise.all(
-        studentList.map(async (s) => {
-          const { data: projects } = await supabase
-            .from("projects")
-            .select("title, status")
-            .eq("student_id", s.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          let facultyName: string | null = null;
-          if (projects && projects.length > 0 && projects[0].status === "assigned") {
-            const { data: assignment } = await supabase
-              .from("assignments")
-              .select("faculty:users!assignments_faculty_id_fkey(name)")
-              .eq("student_id", s.id)
-              .limit(1)
-              .single();
-            facultyName = (assignment as any)?.faculty?.name || null;
-          }
-
-          return {
-            id: s.id,
-            name: s.name,
-            registration_number: s.registration_number,
-            project: projects && projects.length > 0 ? projects[0] : null,
-            facultyName,
-          };
-        })
-      );
-
-      setStudents(enriched);
-
-      // Get faculty in same department with assignment counts
-      const { data: facultyData } = await supabase
-        .from("users")
-        .select("id, name, department, max_students")
-        .eq("role", "faculty")
-        .eq("department", sec.department);
-
-      const facultyList = await Promise.all(
-        (facultyData || []).map(async (f) => {
-          const { count } = await supabase
-            .from("assignments")
-            .select("id", { count: "exact", head: true })
-            .eq("faculty_id", f.id);
-          return { ...f, max_students: f.max_students || 5, assignedCount: count || 0 };
-        })
-      );
-      setFaculty(facultyList);
-
-      // Get pending requests count
-      const { count: pendCount } = await supabase
-        .from("guide_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending");
-      setPendingRequests(pendCount || 0);
-
-      setLoading(false);
-    };
-    fetchAll();
-  }, [user]);
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchAll]);
 
   const withGuide = students.filter((s) => s.facultyName !== null).length;
   const withoutGuide = students.length - withGuide;
