@@ -48,7 +48,7 @@ const App = () => (
               <Route path="faculty-allocation" element={<ProtectedRoute allowedRoles={["coordinator"]}><FacultyAllocation /></ProtectedRoute>} />
               <Route path="requests" element={<ProtectedRoute allowedRoles={["student", "faculty"]}><Requests /></ProtectedRoute>} />
               <Route path="requests/send" element={<ProtectedRoute allowedRoles={["student"]}><SendRequest /></ProtectedRoute>} />
-              <Route path="notifications" element={<ProtectedRoute allowedRoles={["student", "faculty"]}><Notifications /></ProtectedRoute>} />
+              <Route path="notifications" element={<ProtectedRoute allowedRoles={["student", "faculty", "coordinator"]}><Notifications /></ProtectedRoute>} />
               <Route path="profile" element={<Profile />} />
               <Route path="admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="admin/add-faculty" element={<ProtectedRoute allowedRoles={["admin"]}><AddFaculty /></ProtectedRoute>} />
