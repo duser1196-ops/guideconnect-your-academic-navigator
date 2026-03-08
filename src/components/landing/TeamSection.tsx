@@ -26,7 +26,7 @@ const team = [
 ];
 
 const TeamSection = () => (
-  <section className="py-24 md:py-32 gradient-subtle relative overflow-hidden">
+  <section id="about" className="py-24 md:py-32 gradient-subtle relative overflow-hidden">
     <div className="absolute inset-0 dot-grid opacity-30" />
     <div className="container mx-auto px-4 relative z-10">
       <motion.div
