@@ -141,13 +141,21 @@ const FacultyAllocation = () => {
       .eq("project_id", assignDialog.projectId)
       .eq("status", "pending");
 
-    // Notify student
-    await supabase.from("notifications").insert({
-      user_id: assignDialog.studentId,
-      title: "Faculty Assigned",
-      message: "A coordinator has assigned a faculty guide to your project.",
-      type: "assignment",
-    });
+    // Notify student and faculty
+    await supabase.from("notifications").insert([
+      {
+        user_id: assignDialog.studentId,
+        title: "Faculty Assigned",
+        message: "Coordinator assigned a faculty guide for your project.",
+        type: "assignment",
+      },
+      {
+        user_id: selectedFaculty,
+        title: "New Student Assignment",
+        message: "You have been assigned as a guide for a student project.",
+        type: "assignment",
+      },
+    ]);
 
     toast({ title: "Assignment Created", description: `Faculty assigned to ${assignDialog.studentName}'s project.` });
     setAssignDialog({ open: false });
