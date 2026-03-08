@@ -39,7 +39,7 @@ const HowItWorksSection = () => (
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: i * 0.15, ease: [0.22, 1, 0.36, 1] as const }}
             className="text-center relative"
           >
             <div className="relative z-10 mx-auto w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mb-5 shadow-lg">
