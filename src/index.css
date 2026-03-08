@@ -39,8 +39,10 @@
     --gradient-primary: linear-gradient(135deg, hsl(239, 84%, 67%), hsl(270, 60%, 60%));
     --gradient-hero: linear-gradient(135deg, hsl(239, 84%, 67%) 0%, hsl(270, 60%, 60%) 50%, hsl(290, 60%, 55%) 100%);
     --gradient-subtle: linear-gradient(135deg, hsl(239, 84%, 97%), hsl(270, 60%, 96%));
-    --shadow-glass: 0 8px 32px hsla(239, 84%, 67%, 0.12);
-    --shadow-elevated: 0 20px 60px hsla(234, 47%, 14%, 0.08);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsla(239, 84%, 67%, 0.08) 0px, transparent 50%), radial-gradient(at 80% 80%, hsla(270, 60%, 60%, 0.06) 0px, transparent 50%);
+    --shadow-glass: 0 8px 32px hsla(239, 84%, 67%, 0.08);
+    --shadow-elevated: 0 20px 60px hsla(234, 47%, 14%, 0.06);
+    --shadow-hover: 0 24px 48px hsla(239, 84%, 67%, 0.14);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -87,12 +89,47 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
   }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.35);
+  }
+
+  /* Focus ring */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring/40 ring-offset-2 ring-offset-background;
+  }
+
+  /* Selection */
+  ::selection {
+    background: hsl(var(--primary) / 0.15);
+    color: hsl(var(--foreground));
   }
 }
 
@@ -105,6 +142,15 @@
     @apply bg-card/90 backdrop-blur-2xl border border-border/60;
     box-shadow: var(--shadow-elevated);
   }
+  .glass-interactive {
+    @apply bg-card/70 backdrop-blur-xl border border-border/50 transition-all duration-300;
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-interactive:hover {
+    @apply bg-card/85 border-border/70;
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+  }
   .gradient-primary {
     background: var(--gradient-primary);
   }
@@ -114,10 +160,65 @@
   .gradient-subtle {
     background: var(--gradient-subtle);
   }
+  .gradient-mesh {
+    background: var(--gradient-mesh);
+  }
   .gradient-text {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Premium button styles */
+  .btn-gradient {
+    @apply relative overflow-hidden text-primary-foreground font-medium;
+    background: var(--gradient-primary);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .btn-gradient::before {
+    content: '';
+    @apply absolute inset-0 opacity-0;
+    background: linear-gradient(135deg, hsl(270, 60%, 60%), hsl(290, 60%, 55%));
+    transition: opacity 0.3s ease;
+  }
+  .btn-gradient:hover::before {
+    opacity: 1;
+  }
+  .btn-gradient:hover {
+    box-shadow: 0 8px 24px hsla(239, 84%, 67%, 0.3);
+    transform: translateY(-1px);
+  }
+  .btn-gradient:active {
+    transform: translateY(0);
+  }
+  .btn-gradient > * {
+    @apply relative z-10;
+  }
+
+  /* Subtle dot grid background */
+  .dot-grid {
+    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Animated underline */
+  .hover-underline {
+    @apply relative;
+  }
+  .hover-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-[2px] rounded-full;
+    background: var(--gradient-primary);
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hover-underline:hover::after {
+    @apply w-full;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }
