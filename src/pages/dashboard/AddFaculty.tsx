@@ -8,23 +8,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import AnimatedCard from "@/components/AnimatedCard";
 import DashboardHeader from "@/components/DashboardHeader";
+import { supabase } from "@/integrations/supabase/client";
 
 const AddFaculty = () => {
   const [form, setForm] = useState({
-    name: "", email: "", staffId: "", department: "", interests: "", maxStudents: "",
+    name: "", email: "", password: "", staffId: "", department: "", interests: "", maxStudents: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
   const update = (f: string, v: string) => setForm((p) => ({ ...p, [f]: v }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const res = await supabase.functions.invoke("admin-create-user", {
+        body: {
+          email: form.email,
+          password: form.password,
+          name: form.name,
+          role: "faculty",
+          department: form.department,
+          faculty_id: form.staffId,
+          expertise: form.interests.split(",").map((s) => s.trim()).filter(Boolean),
+          max_students: parseInt(form.maxStudents) || 5,
+        },
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to create faculty");
+      }
+
       toast({ title: "Faculty Added ✓", description: `${form.name} has been added as faculty.` });
+      setForm({ name: "", email: "", password: "", staffId: "", department: "", interests: "", maxStudents: "" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
       setSubmitting(false);
-      setForm({ name: "", email: "", staffId: "", department: "", interests: "", maxStudents: "" });
-    }, 800);
+    }
   };
 
   return (
@@ -46,6 +71,13 @@ const AddFaculty = () => {
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input type="email" placeholder="john@university.edu" value={form.email} onChange={(e) => update("email", e.target.value)} className="pl-10" required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Temporary Password</Label>
+              <div className="relative">
+                <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input type="password" placeholder="Min 6 characters" value={form.password} onChange={(e) => update("password", e.target.value)} className="pl-10" required minLength={6} />
               </div>
             </div>
             <div className="space-y-2">

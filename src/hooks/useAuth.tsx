@@ -1,22 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session, User } from "@supabase/supabase-js";
 
 export type AuthRole = "student" | "faculty" | "coordinator" | "admin";
 
 export interface AuthUser {
+  id: string;
+  authId: string;
   email: string;
   name: string;
   role: AuthRole;
-  token: string;
-}
-
-interface AuthContextType {
-  user: AuthUser | null;
-  loading: boolean;
-  error: string;
-  login: (email: string, password: string) => boolean;
-  register: (data: StudentRegisterData) => boolean;
-  logout: () => void;
 }
 
 export interface StudentRegisterData {
@@ -24,26 +17,26 @@ export interface StudentRegisterData {
   email: string;
   password: string;
   department: string;
-  rollNumber: string;
-  year: string;
+  registration_number: string;
   section: string;
-  projectType: string;
 }
 
-const dummyAccounts: { email: string; password: string; name: string; role: AuthRole }[] = [
-  { email: "student@test.com", password: "123456", name: "Alex Johnson", role: "student" },
-  { email: "faculty@test.com", password: "123456", name: "Dr. Sarah Chen", role: "faculty" },
-  { email: "coordinator@test.com", password: "123456", name: "Prof. Williams", role: "coordinator" },
-  { email: "admin@test.com", password: "123456", name: "System Admin", role: "admin" },
-];
+interface AuthContextType {
+  user: AuthUser | null;
+  loading: boolean;
+  error: string;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (data: StudentRegisterData) => Promise<boolean>;
+  logout: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   error: "",
-  login: () => false,
-  register: () => false,
-  logout: () => {},
+  login: async () => false,
+  register: async () => false,
+  logout: async () => {},
 });
 
 export const roleRedirects: Record<AuthRole, string> = {
@@ -53,63 +46,131 @@ export const roleRedirects: Record<AuthRole, string> = {
   admin: "/dashboard",
 };
 
+async function fetchUserProfile(authId: string): Promise<AuthUser | null> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, auth_id, email, name, role")
+    .eq("auth_id", authId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    authId: data.auth_id!,
+    email: data.email,
+    name: data.name,
+    role: data.role as AuthRole,
+  };
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const stored = localStorage.getItem("guideconnect_user");
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {}
-    }
-    setLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          // Use setTimeout to avoid Supabase deadlock
+          setTimeout(async () => {
+            const profile = await fetchUserProfile(session.user.id);
+            setUser(profile);
+            setLoading(false);
+          }, 0);
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    // THEN check existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id);
+        setUser(profile);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (email: string, password: string): boolean => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setError("");
-    const account = dummyAccounts.find(
-      (a) => a.email.toLowerCase() === email.toLowerCase() && a.password === password
-    );
-    if (!account) {
-      setError("Invalid email or password");
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
       return false;
     }
-    const authUser: AuthUser = {
-      email: account.email,
-      name: account.name,
-      role: account.role,
-      token: `dummy-token-${Date.now()}`,
-    };
-    setUser(authUser);
-    localStorage.setItem("guideconnect_user", JSON.stringify(authUser));
-    return true;
+
+    if (data.user) {
+      const profile = await fetchUserProfile(data.user.id);
+      if (!profile) {
+        setError("User profile not found. Contact administrator.");
+        await supabase.auth.signOut();
+        return false;
+      }
+      setUser(profile);
+      return true;
+    }
+
+    return false;
   };
 
-  const register = (data: StudentRegisterData): boolean => {
+  const register = async (data: StudentRegisterData): Promise<boolean> => {
     setError("");
-    if (dummyAccounts.find((a) => a.email.toLowerCase() === data.email.toLowerCase())) {
-      setError("Email already registered");
-      return false;
-    }
-    const authUser: AuthUser = {
+
+    // Sign up with Supabase Auth
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: data.email,
-      name: data.name,
-      role: "student",
-      token: `dummy-token-${Date.now()}`,
-    };
-    dummyAccounts.push({ email: data.email, password: data.password, name: data.name, role: "student" });
-    setUser(authUser);
-    localStorage.setItem("guideconnect_user", JSON.stringify(authUser));
-    return true;
+      password: data.password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      return false;
+    }
+
+    if (authData.user) {
+      // Insert user profile
+      const { error: insertError } = await supabase.from("users").insert({
+        auth_id: authData.user.id,
+        email: data.email,
+        name: data.name,
+        role: "student" as const,
+        department: data.department,
+        registration_number: data.registration_number,
+        section: data.section,
+      });
+
+      if (insertError) {
+        setError("Registration failed: " + insertError.message);
+        return false;
+      }
+
+      const profile = await fetchUserProfile(authData.user.id);
+      setUser(profile);
+      return true;
+    }
+
+    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setError("");
-    localStorage.removeItem("guideconnect_user");
   };
 
   return (
