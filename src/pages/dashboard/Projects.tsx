@@ -1,29 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import AnimatedCard from "@/components/AnimatedCard";
-import { FolderKanban, Plus, Calendar, Users, Eye } from "lucide-react";
+import { FolderKanban, Plus, Calendar, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
-const initialProjects = [
-  { id: 1, title: "ML in Healthcare", mentor: "Dr. Ramesh Kumar", status: "In Progress", progress: 65, date: "Jan 2026" },
-  { id: 2, title: "NLP Chatbot", mentor: "Dr. Meena Sharma", status: "In Progress", progress: 40, date: "Feb 2026" },
-  { id: 3, title: "IoT Smart Campus", mentor: "Dr. Anil Verma", status: "Completed", progress: 100, date: "Dec 2025" },
-  { id: 4, title: "Blockchain Auth System", mentor: "Dr. Priya Singh", status: "Pending", progress: 10, date: "Mar 2026" },
-  { id: 5, title: "AR Learning Platform", mentor: "Dr. Kavita Joshi", status: "In Progress", progress: 55, date: "Feb 2026" },
-  { id: 6, title: "Data Viz Dashboard", mentor: "Dr. Sanjay Patel", status: "Pending", progress: 5, date: "Mar 2026" },
-];
+interface Project {
+  id: string;
+  title: string;
+  description: string | null;
+  domain: string | null;
+  status: string;
+  technologies: string[] | null;
+  created_at: string;
+}
 
 const statusVariant: Record<string, "default" | "secondary" | "outline"> = {
-  "In Progress": "default",
-  Completed: "secondary",
-  Pending: "outline",
+  draft: "outline",
+  request_sent: "default",
+  assigned: "secondary",
+  completed: "secondary",
+};
+
+const statusLabel: Record<string, string> = {
+  draft: "Draft",
+  request_sent: "Request Sent",
+  assigned: "Assigned",
+  completed: "Completed",
 };
 
 const Projects = () => {
-  const [projects] = useState(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    const fetch = async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("student_id", user.id)
+        .order("created_at", { ascending: false });
+      setProjects(data || []);
+      setLoading(false);
+    };
+    fetch();
+  }, [user]);
+
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div>
@@ -34,44 +64,52 @@ const Projects = () => {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects.map((p, i) => (
-          <AnimatedCard key={p.id} delay={i * 0.08}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="gradient-primary rounded-lg p-2">
-                  <FolderKanban className="h-4 w-4 text-primary-foreground" />
+      {projects.length === 0 ? (
+        <AnimatedCard>
+          <div className="text-center py-10">
+            <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-muted-foreground mb-4">You haven't created any projects yet.</p>
+            <Button onClick={() => navigate("/dashboard/projects/create")}>Create Your First Project</Button>
+          </div>
+        </AnimatedCard>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((p, i) => (
+            <AnimatedCard key={p.id} delay={i * 0.08}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="gradient-primary rounded-lg p-2">
+                    <FolderKanban className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                  <h3 className="font-display font-semibold text-sm truncate">{p.title}</h3>
                 </div>
-                <h3 className="font-display font-semibold text-sm">{p.title}</h3>
+                <Badge variant={statusVariant[p.status] || "outline"}>{statusLabel[p.status] || p.status}</Badge>
               </div>
-              <Badge variant={statusVariant[p.status]}>{p.status}</Badge>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-1.5 mb-3">
-              <p className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mentor: {p.mentor}</p>
-              <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Started: {p.date}</p>
-            </div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full gradient-primary"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${p.progress}%` }}
-                  transition={{ duration: 0.8, delay: 0.3 + i * 0.08 }}
-                />
+              <div className="text-xs text-muted-foreground space-y-1.5 mb-3">
+                {p.domain && <p>Domain: {p.domain}</p>}
+                <p className="flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" /> {new Date(p.created_at).toLocaleDateString()}
+                </p>
               </div>
-              <span className="text-xs font-medium text-muted-foreground">{p.progress}%</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full gap-2 text-xs"
-              onClick={() => navigate(`/dashboard/projects/${p.id}`)}
-            >
-              <Eye className="h-3.5 w-3.5" /> View Details
-            </Button>
-          </AnimatedCard>
-        ))}
-      </div>
+              {p.technologies && p.technologies.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {p.technologies.map((t) => (
+                    <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={() => navigate(`/dashboard/projects/${p.id}`)}
+              >
+                <Eye className="h-3.5 w-3.5" /> View Details
+              </Button>
+            </AnimatedCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
