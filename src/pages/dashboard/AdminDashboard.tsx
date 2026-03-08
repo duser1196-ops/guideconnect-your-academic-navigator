@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Users, Shield, UserPlus, Activity, Settings, FolderKanban } from "lucide-react";
+import { Users, Shield, UserPlus, Activity, Settings, FolderKanban, GraduationCap } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
 import StatCard from "@/components/StatCard";
 import AnimatedCard from "@/components/AnimatedCard";
