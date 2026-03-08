@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, User, FolderKanban, MessageSquare, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, User, FolderKanban, MessageSquare, Check, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import AnimatedCard from "@/components/AnimatedCard";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,48 +13,74 @@ import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
 const steps = [
   { label: "Select Faculty", icon: User },
-  { label: "Select Project", icon: FolderKanban },
   { label: "Write Message", icon: MessageSquare },
   { label: "Confirm", icon: Check },
 ];
 
 interface FacultyOption { id: string; name: string; department: string | null; max_students: number | null; }
-interface ProjectOption { id: string; title: string; }
+interface ProjectInfo { id: string; title: string; status: string; }
 
 const SendRequest = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ facultyId: "", projectId: "", message: "" });
+  const [form, setForm] = useState({ facultyId: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [facultyList, setFacultyList] = useState<FacultyOption[]>([]);
-  const [projectList, setProjectList] = useState<ProjectOption[]>([]);
+  const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [existingRequestFacultyIds, setExistingRequestFacultyIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      const [facRes, projRes] = await Promise.all([
-        supabase.from("users").select("id, name, department, max_students").eq("role", "faculty" as any),
-        supabase.from("projects").select("id, title").eq("student_id", user.id).in("status", ["draft", "request_sent"] as any),
-      ]);
-      setFacultyList(facRes.data || []);
-      setProjectList(projRes.data || []);
+    const fetchData = async () => {
+      // Fetch student's project
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, title, status")
+        .eq("student_id", user.id)
+        .in("status", ["draft", "request_sent"] as any)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const studentProject = projects && projects.length > 0 ? projects[0] : null;
+      setProject(studentProject);
+
+      if (studentProject) {
+        // Fetch existing requests for this project to prevent duplicates
+        const { data: existingRequests } = await supabase
+          .from("guide_requests")
+          .select("faculty_id")
+          .eq("project_id", studentProject.id)
+          .eq("student_id", user.id)
+          .in("status", ["pending", "accepted"] as any);
+
+        setExistingRequestFacultyIds((existingRequests || []).map((r) => r.faculty_id));
+      }
+
+      // Fetch faculty
+      const { data: facData } = await supabase
+        .from("users")
+        .select("id, name, department, max_students")
+        .eq("role", "faculty" as any);
+
+      setFacultyList(facData || []);
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [user]);
 
   const selectedFaculty = facultyList.find((f) => f.id === form.facultyId);
-  const selectedProject = projectList.find((p) => p.id === form.projectId);
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (step === 0 && !form.facultyId) e.facultyId = "Please select a faculty member";
-    if (step === 1 && !form.projectId) e.projectId = "Please select a project";
-    if (step === 2 && !form.message.trim()) e.message = "Please write a message";
+    if (step === 0) {
+      if (!form.facultyId) e.facultyId = "Please select a faculty member";
+      else if (existingRequestFacultyIds.includes(form.facultyId)) e.facultyId = "You have already requested this faculty.";
+    }
+    if (step === 1 && !form.message.trim()) e.message = "Please write a message";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -64,11 +89,27 @@ const SendRequest = () => {
   const prev = () => { if (step > 0) setStep(step - 1); };
 
   const handleSend = async () => {
-    if (!user) return;
+    if (!user || !project) return;
     setSubmitting(true);
 
+    // Double-check for duplicate
+    const { data: dupCheck } = await supabase
+      .from("guide_requests")
+      .select("id")
+      .eq("project_id", project.id)
+      .eq("faculty_id", form.facultyId)
+      .eq("student_id", user.id)
+      .in("status", ["pending", "accepted"] as any)
+      .limit(1);
+
+    if (dupCheck && dupCheck.length > 0) {
+      toast({ title: "Duplicate Request", description: "You have already requested this faculty.", variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
     const { error } = await supabase.from("guide_requests").insert({
-      project_id: form.projectId,
+      project_id: project.id,
       student_id: user.id,
       faculty_id: form.facultyId,
       message: form.message,
@@ -81,7 +122,7 @@ const SendRequest = () => {
     }
 
     setSent(true);
-    toast({ title: "Request Sent! 🚀", description: `Your request has been sent to ${selectedFaculty?.name}.` });
+    toast({ title: "Guide request sent successfully! 🚀", description: `Your request has been sent to ${selectedFaculty?.name}.` });
     setTimeout(() => navigate("/dashboard/requests"), 2000);
   };
 
@@ -92,6 +133,18 @@ const SendRequest = () => {
   };
 
   if (loading) return <DashboardSkeleton />;
+
+  // No project assigned
+  if (!project) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground/40 mb-4" />
+        <h2 className="font-display text-xl font-bold mb-2">No Project Assigned</h2>
+        <p className="text-muted-foreground mb-6">You cannot request a faculty guide until a project is assigned by the coordinator.</p>
+        <Button variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
+      </div>
+    );
+  }
 
   if (sent) {
     return (
@@ -105,11 +158,17 @@ const SendRequest = () => {
     );
   }
 
+  // Available faculty (exclude already-requested)
+  const availableFaculty = facultyList.filter((f) => !existingRequestFacultyIds.includes(f.id));
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/requests")}><ArrowLeft className="h-5 w-5" /></Button>
-        <h1 className="font-display text-2xl font-bold">Send Request</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold">Send Request</h1>
+          <p className="text-sm text-muted-foreground">Project: {project.title}</p>
+        </div>
       </div>
 
       {/* Progress */}
@@ -132,12 +191,19 @@ const SendRequest = () => {
             {step === 0 && (
               <div className="space-y-4">
                 <h3 className="font-display font-semibold text-lg">Select Faculty</h3>
-                <p className="text-sm text-muted-foreground">Choose the faculty member you'd like to send a mentorship request to.</p>
-                {facultyList.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">No faculty members available yet.</p>
+                <p className="text-sm text-muted-foreground">Choose the faculty member you'd like to request as your guide.</p>
+                {availableFaculty.length === 0 ? (
+                  <div className="text-center py-6">
+                    <User className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {existingRequestFacultyIds.length > 0
+                        ? "You have already sent requests to all available faculty."
+                        : "No faculty members available yet."}
+                    </p>
+                  </div>
                 ) : (
                   <div className="grid gap-2">
-                    {facultyList.map((f) => (
+                    {availableFaculty.map((f) => (
                       <motion.button key={f.id} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => { setForm({ ...form, facultyId: f.id }); setErrors({}); }}
                         className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${form.facultyId === f.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}>
                         <div className="gradient-primary rounded-full h-9 w-9 flex items-center justify-center shrink-0"><User className="h-4 w-4 text-primary-foreground" /></div>
@@ -156,25 +222,6 @@ const SendRequest = () => {
 
             {step === 1 && (
               <div className="space-y-4">
-                <h3 className="font-display font-semibold text-lg">Select Project</h3>
-                <p className="text-sm text-muted-foreground">Choose the project for this mentorship request.</p>
-                {projectList.length === 0 ? (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground mb-2">You need to create a project first.</p>
-                    <Button size="sm" onClick={() => navigate("/dashboard/projects/create")}>Create Project</Button>
-                  </div>
-                ) : (
-                  <Select value={form.projectId} onValueChange={(v) => { setForm({ ...form, projectId: v }); setErrors({}); }}>
-                    <SelectTrigger className={errors.projectId ? "border-destructive" : ""}><SelectValue placeholder="Select a project" /></SelectTrigger>
-                    <SelectContent>{projectList.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
-                  </Select>
-                )}
-                {errors.projectId && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive">{errors.projectId}</motion.p>}
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-4">
                 <h3 className="font-display font-semibold text-lg">Write a Message</h3>
                 <p className="text-sm text-muted-foreground">Explain why you'd like this faculty as your mentor.</p>
                 <div className="space-y-2">
@@ -186,13 +233,13 @@ const SendRequest = () => {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <div className="space-y-5">
                 <h3 className="font-display font-semibold text-lg">Confirm & Send</h3>
                 <p className="text-sm text-muted-foreground">Review your request before sending.</p>
                 <div className="space-y-3 p-4 rounded-lg bg-muted/40 border border-border">
                   <div><p className="text-xs text-muted-foreground font-medium mb-0.5">Faculty</p><p className="text-sm">{selectedFaculty?.name} ({selectedFaculty?.department || "—"})</p></div>
-                  <div><p className="text-xs text-muted-foreground font-medium mb-0.5">Project</p><p className="text-sm">{selectedProject?.title}</p></div>
+                  <div><p className="text-xs text-muted-foreground font-medium mb-0.5">Project</p><p className="text-sm">{project.title}</p></div>
                   <div><p className="text-xs text-muted-foreground font-medium mb-0.5">Message</p><p className="text-sm leading-relaxed">{form.message}</p></div>
                 </div>
               </div>
@@ -203,7 +250,7 @@ const SendRequest = () => {
         <div className="flex justify-between mt-8 pt-4 border-t border-border">
           <Button variant="outline" onClick={prev} disabled={step === 0} className="gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>
           {step < steps.length - 1 ? (
-            <Button onClick={next} className="gap-2">Next <motion.span initial={{ x: 0 }} whileHover={{ x: 3 }}>→</motion.span></Button>
+            <Button onClick={next} className="gap-2" disabled={step === 0 && availableFaculty.length === 0}>Next <motion.span initial={{ x: 0 }} whileHover={{ x: 3 }}>→</motion.span></Button>
           ) : (
             <Button onClick={handleSend} className="gap-2" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
