@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 const navByRole: Record<AuthRole, { title: string; url: string; icon: typeof LayoutDashboard }[]> = {
   student: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Projects", url: "/dashboard/projects", icon: FolderKanban },
     { title: "Faculty", url: "/dashboard/faculty", icon: Users },
     { title: "Requests", url: "/dashboard/requests", icon: FileText },
     { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
