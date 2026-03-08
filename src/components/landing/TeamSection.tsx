@@ -51,7 +51,7 @@ const TeamSection = () => (
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: i * 0.15, ease: [0.22, 1, 0.36, 1] as const }}
             whileHover={{ y: -6, transition: { duration: 0.25 } }}
             className="glass-strong rounded-2xl p-6 text-center group"
           >
